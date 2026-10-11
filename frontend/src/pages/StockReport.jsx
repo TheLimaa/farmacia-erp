@@ -26,9 +26,7 @@ const StockReport = () => {
                 if (dataMed.success) setCatalogoMedicamentos(dataMed.data);
 
                 setCatalogoSucursales([
-                    { ID_SUCURSAL: 1, NOMBRE_UBICACION: 'Farmacia Miraflores' },
-                    { ID_SUCURSAL: 2, NOMBRE_UBICACION: 'Stand Gasolinera Puma Próceres' },
-                    { ID_SUCURSAL: 3, NOMBRE_UBICACION: 'Farmacia Oakland Mall' }
+                   
                 ]);
             } catch (error) { console.error(error); }
         };

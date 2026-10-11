@@ -10,9 +10,7 @@ const Inventory = () => {
     // Catálogos y estados para los desplegables tipo SAP (F4 Help)
     const [catalogo, setCatalogo] = useState([]);
     const [catalogoSucursales] = useState([
-        { ID_SUCURSAL: 1, NOMBRE_UBICACION: 'Farmacia Miraflores' },
-        { ID_SUCURSAL: 2, NOMBRE_UBICACION: 'Stand Gasolinera Puma Próceres' },
-        { ID_SUCURSAL: 3, NOMBRE_UBICACION: 'Farmacia Oakland Mall' }
+
     ]);
     const [showSucursalHelp, setShowSucursalHelp] = useState(false);
     const [showProductoHelp, setShowProductoHelp] = useState(false);

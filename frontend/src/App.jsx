@@ -12,6 +12,7 @@ import Inventory from './pages/Inventory';
 import StockReport from './pages/StockReport';
 import TransitReport from './pages/TransitReport';
 import BusinessPartner from './pages/BusinessPartner';
+import ActivosFijos from './pages/ActivosFijos';
 import './App.css';
 
 function App() {
@@ -36,6 +37,7 @@ function App() {
               {/* Ruta protegida exclusiva para Administradores (Auditoría Financiera) */}
               <Route path="/auditoria" element={<ProtectedRoute requiredRole="ADMINISTRADOR"><Audit /></ProtectedRoute>} />
               <Route path="/rrhh" element={<ProtectedRoute requiredRole="ADMINISTRADOR"><RRHH /></ProtectedRoute>} />
+              <Route path="/activos-fijos" element={<ProtectedRoute requiredRole="ADMINISTRADOR"><ActivosFijos /></ProtectedRoute>} />
               <Route path="*" element={<Navigate to="/login" replace />} />
             </Routes>
           </main>

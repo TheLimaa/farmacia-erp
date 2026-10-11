@@ -1,297 +1,400 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const CallCenter = () => {
     const navigate = useNavigate();
-    const [idMedicamento, setIdMedicamento] = useState('');
-    const [resultados, setResultados] = useState([]);
-    const [catalogo, setCatalogo] = useState([]);
-    const [showHelp, setShowHelp] = useState(false);
     const [mensaje, setMensaje] = useState('');
-    const refHelp = useRef(null);
 
-    // Estado para la orden (Incluye lógica CF)
-    const [vistaOrden, setVistaOrden] = useState(false);
-    const [sucursalElegida, setSucursalElegida] = useState(null);
-    const [productoElegido, setProductoElegido] = useState(null);
-    const [orden, setOrden] = useState({ 
-        nit: '', 
-        cliente: '', 
-        telefono: '', 
-        direccion: '', 
-        metodo_pago: 'EFECTIVO', 
-        cantidad: 1,
-        esCF: false 
+    // Listas para los buscadores predictivos
+    const [catalogo, setCatalogo] = useState([]);
+    const [sucursales, setSucursales] = useState([]);
+
+    // Controles de visibilidad para los dropdowns
+    const [dropdownSucursal, setDropdownSucursal] = useState(false);
+    const [dropdownPosicion, setDropdownPosicion] = useState(null); 
+
+    // Estado principal del pedido (Cabecera)
+    const [orden, setOrden] = useState({
+        nit: '',
+        cliente: '',
+        telefono: '',
+        direccion: '',
+        metodo_pago: 'EFECTIVO',
+        id_sucursal: '',
+        esCF: false
     });
 
-    useEffect(() => {
-        const fetchCatalogo = async () => {
-            try {
-                const res = await fetch('http://localhost:3000/api/inventario/medicamentos');
-                const data = await res.json();
-                if (data.success) setCatalogo(data.data);
-            } catch (err) { console.error(err); }
-        };
-        fetchCatalogo();
+    const [nombreSucursal, setNombreSucursal] = useState('');
 
-        const handleClickOutside = (e) => {
-            if (refHelp.current && !refHelp.current.contains(e.target)) setShowHelp(false);
+    // Estado de las posiciones múltiples (El Carrito)
+    const [posiciones, setPosiciones] = useState([
+        { id_row: 1, pos: 10, id_producto: '', cantidad: 1, nombre: '', precio: 0 }
+    ]);
+
+    const subtotal = posiciones.reduce((sum, item) => sum + (item.precio * item.cantidad), 0);
+    const totalDocumento = subtotal > 0 ? subtotal + 25 : 0; 
+
+    // --- CARGAR LISTAS PREDICTIVAS AL INICIAR ---
+    useEffect(() => {
+        const cargarListas = async () => {
+            try {
+                const resMed = await fetch('http://localhost:3000/api/inventario/medicamentos');
+                const dataMed = await resMed.json();
+                if (dataMed.success) setCatalogo(dataMed.data);
+
+                const resSuc = await fetch('http://localhost:3000/api/dashboard/summary');
+                const dataSuc = await resSuc.json();
+                if (dataSuc.success && dataSuc.data.sucursales) setSucursales(dataSuc.data.sucursales);
+            } catch (error) {
+                console.error('Error cargando listas predictivas:', error);
+            }
         };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
+        cargarListas();
     }, []);
 
-    const medicamentosFiltrados = catalogo.filter(m => 
-        m.ID_MEDICAMENTO?.toString().includes(idMedicamento) || 
-        m.NOMBRE_COMERCIAL?.toLowerCase().includes(idMedicamento.toLowerCase())
-    );
-
-    // Búsqueda de stock mejorada con manejo de errores
-    const consultarStock = async (e) => {
-        if (e) e.preventDefault();
-        if (!idMedicamento) return;
-        
-        setMensaje('Buscando inventario en la red...');
-
-        let idBusqueda = idMedicamento;
-        const prod = catalogo.find(m => 
-            m.ID_MEDICAMENTO?.toString() === idMedicamento || 
-            m.NOMBRE_COMERCIAL?.toLowerCase() === idMedicamento.toLowerCase()
-        );
-        
-        if (prod) {
-            idBusqueda = prod.ID_MEDICAMENTO.toString();
-            setProductoElegido(prod);
-        } else {
-            setProductoElegido({ ID_MEDICAMENTO: idMedicamento, NOMBRE_COMERCIAL: 'Material Seleccionado' });
-        }
-
-        try {
-            const res = await fetch(`http://localhost:3000/api/inventario/stock/${idBusqueda}`);
-            const data = await res.json();
-            
-            if (data.success && data.data && data.data.length > 0) {
-                setResultados(data.data);
-                setVistaOrden(false);
-                setMensaje(''); 
-            } else {
-                setResultados([]);
-                setMensaje('❌ No hay stock disponible para este material en ninguna sucursal.');
-            }
-        } catch (err) { 
-            console.error(err);
-            setResultados([]);
-            setMensaje('❌ Error de conexión. Revisa que el servidor backend esté corriendo.');
-        }
-    };
-
-    const iniciarOrden = (sucursal) => {
-        setSucursalElegida(sucursal);
-        setVistaOrden(true);
-        setMensaje('');
-    };
-
+    // --- FUNCIONES DE BÚSQUEDA TIPO SAP ---
     const buscarBP = async () => {
         if (!orden.nit || orden.esCF) return;
         try {
             const res = await fetch(`http://localhost:3000/api/pedidos/cliente/${orden.nit}`);
             const data = await res.json();
             if (data.success && data.data) {
-                setOrden(prev => ({ 
-                    ...prev, 
-                    cliente: data.data.NOMBRE_COMPLETO || data.data.nombre_completo, 
-                    telefono: data.data.TELEFONO_CONTACTO || data.data.telefono_contacto 
+                setOrden(prev => ({
+                    ...prev,
+                    cliente: data.data.NOMBRE_COMPLETO || data.data.nombre_completo,
+                    telefono: data.data.TELEFONO_CONTACTO || data.data.telefono_contacto
                 }));
             }
         } catch (error) { console.error('Error buscando BP', error); }
     };
 
+    // --- MANEJO DE LA TABLA DINÁMICA ---
+    const agregarPosicion = () => {
+        const ultimaPos = posiciones.length > 0 ? posiciones[posiciones.length - 1].pos : 0;
+        setPosiciones([
+            ...posiciones, 
+            { id_row: Date.now(), pos: ultimaPos + 10, id_producto: '', cantidad: 1, nombre: '', precio: 0 }
+        ]);
+    };
+
+    const eliminarPosicion = (id_row) => {
+        setPosiciones(posiciones.filter(p => p.id_row !== id_row));
+    };
+
+    const actualizarFila = (index, campo, valor) => {
+        const nuevasPosiciones = [...posiciones];
+        nuevasPosiciones[index][campo] = valor;
+        setPosiciones(nuevasPosiciones);
+    };
+
+    // --- LÓGICA DE AUTOCOMPLETADO AL PRESIONAR ENTER ---
+
+    // Para la sucursal
+    const handleKeyDownSucursal = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault(); // Evita que se envíe el formulario
+            if (orden.id_sucursal && sucursales.length > 0) {
+                const encontradas = sucursales.filter(s => 
+                    s.ID_SUCURSAL.toString().includes(orden.id_sucursal) || 
+                    (s.NOMBRE_UBICACION && s.NOMBRE_UBICACION.toLowerCase().includes(orden.id_sucursal.toLowerCase()))
+                );
+                if (encontradas.length > 0) {
+                    setOrden({...orden, id_sucursal: encontradas[0].ID_SUCURSAL.toString()});
+                    setNombreSucursal(encontradas[0].NOMBRE_UBICACION);
+                    setDropdownSucursal(false);
+                } else {
+                    setNombreSucursal('⚠️ Sucursal no existe');
+                }
+            }
+        }
+    };
+
+    // Para los productos de la tabla
+    const handleKeyDownProducto = (e, index, textoBuscado) => {
+        if (e.key === 'Enter') {
+            e.preventDefault(); // Evita que se envíe el formulario
+            if (textoBuscado && catalogo.length > 0) {
+                const encontrados = catalogo.filter(m => 
+                    m.ID_MEDICAMENTO?.toString().includes(textoBuscado) || 
+                    (m.NOMBRE_COMERCIAL || m.NOMBRE_COMERCI)?.toLowerCase().includes(textoBuscado.toLowerCase()) ||
+                    m.DESCRIPCION?.toLowerCase().includes(textoBuscado.toLowerCase())
+                );
+                
+                if (encontrados.length > 0) {
+                    const m = encontrados[0]; // Selecciona el primer resultado
+                    const nuevas = [...posiciones];
+                    nuevas[index].id_producto = m.ID_MEDICAMENTO.toString();
+                    const nom = m.NOMBRE_COMERCIAL || m.NOMBRE_COMERCI;
+                    const desc = m.DESCRIPCION || m.descripcion;
+                    nuevas[index].nombre = desc ? `${nom} - ${desc}` : nom;
+                    nuevas[index].precio = m.PRECIO_UNITARIO || m.precio_unitario || 0;
+                    
+                    setPosiciones(nuevas);
+                    setDropdownPosicion(null);
+                } else {
+                    actualizarFila(index, 'nombre', '⚠️ Cod.Producto no existe');
+                }
+            }
+        }
+    };
+
+    // --- ENVIAR AL BACKEND ---
     const registrarPedido = async (e) => {
         e.preventDefault();
+        
+        const posicionesValidas = posiciones.filter(p => p.id_producto && p.cantidad > 0 && !p.nombre.includes('⚠️'));
+        if (posicionesValidas.length === 0) {
+            setMensaje('❌ Debe ingresar al menos una posición válida.');
+            return;
+        }
+
         try {
             const res = await fetch('http://localhost:3000/api/pedidos', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    id_sucursal: sucursalElegida.ID_SUCURSAL,
-                    id_producto: productoElegido.ID_MEDICAMENTO,
+                    id_sucursal: orden.id_sucursal,
                     nit: orden.esCF ? '' : orden.nit,
                     cliente: orden.cliente,
                     telefono: orden.telefono,
                     direccion: orden.direccion,
                     metodo_pago: orden.metodo_pago,
-                    cantidad: orden.cantidad
+                    posiciones: posicionesValidas.map(p => ({
+                        id_producto: p.id_producto,
+                        cantidad: p.cantidad
+                    }))
                 })
             });
             const data = await res.json();
             
             if (data.success) {
-                setMensaje('✅ ' + (data.message || 'Pedido registrado y enviado a Delivery exitosamente.'));
-                setVistaOrden(false);
-                setResultados([]);
-                setIdMedicamento('');
-                setOrden({ nit: '', cliente: '', telefono: '', direccion: '', metodo_pago: 'EFECTIVO', cantidad: 1, esCF: false });
+                setMensaje('✅ ' + data.message);
+                setOrden({ nit: '', cliente: '', telefono: '', direccion: '', metodo_pago: 'EFECTIVO', id_sucursal: '', esCF: false });
+                setNombreSucursal('');
+                setPosiciones([{ id_row: Date.now(), pos: 10, id_producto: '', cantidad: 1, nombre: '', precio: 0 }]);
             } else {
                 setMensaje('❌ Error: ' + data.message);
             }
             setTimeout(() => setMensaje(''), 5000);
         } catch (err) { 
             console.error(err);
-            setMensaje('❌ Error al procesar el pedido. Revisa el servidor.');
+            setMensaje('❌ Error al procesar el pedido.');
         }
     };
 
     return (
-        <div style={{ padding: '40px 20px', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#fff' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', maxWidth: '1000px', margin: '0 auto 30px auto' }}>
-                <button onClick={() => navigate('/dashboard')} style={{ background: '#333', color: '#fff', border: '1px solid #555', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
-                    ← Regresar al Dashboard
-                </button>
-                <div style={{ textAlign: 'center', flex: 1 }}>
-                    <h2 style={{ fontSize: '22px', margin: '0 0 8px 0', fontWeight: '500' }}>Atención Call Center - Toma de Pedidos</h2>
-                    <p style={{ color: '#666', margin: 0, fontSize: '14px' }}>Verificación de stock por proximidad y facturación.</p>
+        <div style={{ padding: '20px', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#e0e0e0', minHeight: '100vh', background: '#121214' }}>
+            
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #333', paddingBottom: '15px' }}>
+                <button onClick={() => navigate('/dashboard')} style={{ background: 'transparent', color: '#38bdf8', border: 'none', cursor: 'pointer', fontSize: '18px', marginRight: '15px' }}>❮</button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    <div style={{ background: '#0055ff', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontWeight: 'bold', fontSize: '12px' }}>SAP</div>
+                    <h2 style={{ fontSize: '20px', margin: 0, fontWeight: '500', color: '#fff' }}>Crear Oferta Guatemala: Resumen</h2>
                 </div>
-                <div style={{ width: '150px' }}></div>
             </div>
 
-            {mensaje && <div style={{ maxWidth: '1000px', margin: '0 auto 20px auto', padding: '12px', background: '#252528', border: mensaje.includes('❌') ? '1px solid #ef4444' : '1px solid #34d399', color: mensaje.includes('❌') ? '#ef4444' : '#34d399', borderRadius: '6px', textAlign: 'center', fontWeight: 'bold' }}>{mensaje}</div>}
+            {mensaje && <div style={{ marginBottom: '20px', padding: '12px', background: '#1c1c1e', borderLeft: mensaje.includes('❌') ? '4px solid #ef4444' : '4px solid #34d399', color: mensaje.includes('❌') ? '#ef4444' : '#34d399', fontWeight: 'bold' }}>{mensaje}</div>}
 
-            {!vistaOrden && (
-                <div style={{ background: '#1c1c1e', padding: '30px', borderRadius: '8px', border: '1px solid #2a2a2c', maxWidth: '1000px', margin: '0 auto 30px auto' }}>
-                    <h3 style={{ textAlign: 'center', color: '#555', margin: '0 0 25px 0', fontSize: '16px', fontWeight: 'bold' }}>Búsqueda de Material solicitado por el cliente</h3>
-                    
-                    <form onSubmit={consultarStock} style={{ display: 'flex', justifyContent: 'center' }}>
-                        <div ref={refHelp} style={{ display: 'flex', width: '100%', maxWidth: '600px', position: 'relative' }}>
-                            <input 
-                                type="text" 
-                                placeholder="Ingrese ID o Nombre del Medicamento..." 
-                                value={idMedicamento}
-                                onFocus={() => setShowHelp(true)}
-                                onChange={e => { setIdMedicamento(e.target.value); setShowHelp(true); }}
-                                style={{ flex: 1, background: '#333', color: '#fff', border: '1px solid #444', padding: '12px 15px', borderRadius: '4px 0 0 4px', outline: 'none' }}
-                            />
-                            {showHelp && (
-                                <div style={{ position: 'absolute', top: '100%', left: 0, width: '100%', background: '#252528', border: '1px solid #444', borderRadius: '4px', zIndex: 10, maxHeight: '200px', overflowY: 'auto' }}>
-                                    {medicamentosFiltrados.map(m => (
-                                        <div key={m.ID_MEDICAMENTO} onClick={() => { setIdMedicamento(m.ID_MEDICAMENTO.toString()); setShowHelp(false); }}
-                                             style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '13px', borderBottom: '1px solid #333' }}
-                                             onMouseEnter={e => e.currentTarget.style.background = '#3a3a3d'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                                        >
-                                            <strong style={{ color: '#00ffcc' }}>{m.ID_MEDICAMENTO}</strong> - {m.NOMBRE_COMERCIAL}
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                            <button type="submit" style={{ background: '#0055ff', color: '#fff', border: 'none', padding: '13px 25px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '0 4px 4px 0' }}>
-                                Buscar Cobertura
-                            </button>
+            <form onSubmit={registrarPedido}>
+                
+                <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
+                    {/* SECCIÓN: SOLICITANTE */}
+                    <div style={{ flex: 1, background: '#1c1c1e', padding: '20px', borderRadius: '4px', borderTop: '3px solid #38bdf8' }}>
+                        <h3 style={{ margin: '0 0 15px 0', fontSize: '14px', color: '#aaa', textTransform: 'uppercase' }}>Datos del Solicitante</h3>
+                        
+                        <div style={{ marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <input type="checkbox" id="checkCF" checked={orden.esCF} onChange={e => setOrden({...orden, esCF: e.target.checked, nit: e.target.checked ? '' : orden.nit})} />
+                            <label htmlFor="checkCF" style={{ fontSize: '13px', color: '#888' }}>Consumidor Final (CF)</label>
                         </div>
-                    </form>
-                </div>
-            )}
 
-            {!vistaOrden && resultados.length > 0 && (
-                <div style={{ background: '#1c1c1e', padding: '30px', borderRadius: '8px', border: '1px solid #2a2a2c', maxWidth: '1000px', margin: '0 auto' }}>
-                    <h3 style={{ color: '#555', marginBottom: '20px', fontSize: '16px' }}>Sucursales con Stock para {productoElegido?.NOMBRE_COMERCIAL}</h3>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '10px', alignItems: 'center', marginBottom: '10px' }}>
+                            <label style={{ fontSize: '13px', color: '#888', textAlign: 'right' }}>Solicitante:*</label>
+                            <input type="text" placeholder="NIT / Código BP" value={orden.nit} onChange={e => setOrden({...orden, nit: e.target.value})} onBlur={buscarBP} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); buscarBP(); } }} disabled={orden.esCF} required={!orden.esCF} style={{ padding: '6px 10px', background: '#121214', color: '#fff', border: '1px solid #333', borderRadius: '3px', outline: 'none' }} />
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '10px', alignItems: 'center', marginBottom: '10px' }}>
+                            <label style={{ fontSize: '13px', color: '#888', textAlign: 'right' }}>Nombre:*</label>
+                            <input type="text" value={orden.cliente} onChange={e => setOrden({...orden, cliente: e.target.value})} onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }} required style={{ padding: '6px 10px', background: '#121214', color: '#fff', border: '1px solid #333', borderRadius: '3px', outline: 'none' }} />
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '10px', alignItems: 'center', marginBottom: '10px' }}>
+                            <label style={{ fontSize: '13px', color: '#888', textAlign: 'right' }}>Teléfono:*</label>
+                            <input type="text" value={orden.telefono} onChange={e => setOrden({...orden, telefono: e.target.value})} onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }} required style={{ padding: '6px 10px', background: '#121214', color: '#fff', border: '1px solid #333', borderRadius: '3px', outline: 'none' }} />
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '10px', alignItems: 'center' }}>
+                            <label style={{ fontSize: '13px', color: '#888', textAlign: 'right' }}>Destinat.mcía:*</label>
+                            <input type="text" placeholder="Dirección de entrega" value={orden.direccion} onChange={e => setOrden({...orden, direccion: e.target.value})} onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }} required style={{ padding: '6px 10px', background: '#121214', color: '#fff', border: '1px solid #333', borderRadius: '3px', outline: 'none' }} />
+                        </div>
+                    </div>
+
+                    {/* SECCIÓN: APROVISIONAMIENTO */}
+                    <div style={{ flex: 1, background: '#1c1c1e', padding: '20px', borderRadius: '4px', borderTop: '3px solid #00ffcc' }}>
+                        <h3 style={{ margin: '0 0 15px 0', fontSize: '14px', color: '#aaa', textTransform: 'uppercase' }}>Aprovisionamiento y Pago</h3>
+                        
+                        <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '10px', alignItems: 'center', marginBottom: '15px' }}>
+                            <label style={{ fontSize: '13px', color: '#888', textAlign: 'right' }}>Centro sumin.:*</label>
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                {/* BUSCADOR PREDICTIVO SUCURSAL */}
+                                <div style={{ position: 'relative' }}>
+                                    <input 
+                                        type="text" 
+                                        placeholder="Cód o Nombre" 
+                                        value={orden.id_sucursal} 
+                                        onChange={e => {
+                                            setOrden({...orden, id_sucursal: e.target.value});
+                                            setDropdownSucursal(true);
+                                            setNombreSucursal('');
+                                        }} 
+                                        onKeyDown={handleKeyDownSucursal} // Captura el Enter aquí
+                                        onBlur={() => setTimeout(() => setDropdownSucursal(false), 200)}
+                                        required 
+                                        style={{ width: '120px', padding: '6px 10px', background: '#121214', color: '#00ffcc', border: '1px solid #333', borderRadius: '3px', outline: 'none', fontWeight: 'bold' }} 
+                                    />
+                                    
+                                    {dropdownSucursal && orden.id_sucursal && (
+                                        <div style={{ position: 'absolute', top: '100%', left: 0, width: '250px', background: '#252528', border: '1px solid #444', borderRadius: '4px', zIndex: 10, maxHeight: '150px', overflowY: 'auto', boxShadow: '0 4px 6px rgba(0,0,0,0.3)' }}>
+                                            {sucursales.filter(s => 
+                                                s.ID_SUCURSAL.toString().includes(orden.id_sucursal) || 
+                                                (s.NOMBRE_UBICACION && s.NOMBRE_UBICACION.toLowerCase().includes(orden.id_sucursal.toLowerCase()))
+                                            ).map(s => (
+                                                <div key={s.ID_SUCURSAL} 
+                                                    onClick={() => {
+                                                        setOrden({...orden, id_sucursal: s.ID_SUCURSAL.toString()});
+                                                        setNombreSucursal(s.NOMBRE_UBICACION);
+                                                        setDropdownSucursal(false);
+                                                    }}
+                                                    style={{ padding: '8px 10px', cursor: 'pointer', borderBottom: '1px solid #333', fontSize: '12px' }}
+                                                >
+                                                    <strong style={{ color: '#00ffcc' }}>{s.ID_SUCURSAL}</strong> - {s.NOMBRE_UBICACION}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                                <span style={{ fontSize: '13px', color: nombreSucursal.includes('⚠️') ? '#ef4444' : '#fff', fontWeight: 'bold' }}>
+                                    {nombreSucursal || <span style={{ color: '#666', fontWeight: 'normal' }}>(Búsqueda rápida)</span>}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '10px', alignItems: 'center', marginBottom: '30px' }}>
+                            <label style={{ fontSize: '13px', color: '#888', textAlign: 'right' }}>Condic.pago:*</label>
+                            <select value={orden.metodo_pago} onChange={e => setOrden({...orden, metodo_pago: e.target.value})} onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }} style={{ padding: '6px 10px', background: '#121214', color: '#fff', border: '1px solid #333', borderRadius: '3px', outline: 'none' }}>
+                                <option value="EFECTIVO">0001 - Efectivo C.O.D.</option>
+                                <option value="POS">0002 - Tarjeta POS</option>
+                                <option value="LINK">0003 - Link de Pago</option>
+                            </select>
+                        </div>
+
+                        <div style={{ borderTop: '1px solid #333', paddingTop: '15px', display: 'flex', justifyContent: 'space-between' }}>
+                            <span style={{ fontSize: '14px', color: '#888' }}>Importe total:</span>
+                            <span style={{ fontSize: '18px', color: '#38bdf8', fontWeight: 'bold' }}>GTQ {totalDocumento.toFixed(2)}</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* SECCIÓN: TABLA DE POSICIONES */}
+                <div style={{ background: '#1c1c1e', padding: '20px', borderRadius: '4px' }}>
+                    <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+                        <button type="button" onClick={agregarPosicion} style={{ background: '#252528', color: '#fff', border: '1px solid #444', padding: '6px 12px', borderRadius: '3px', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <span style={{ color: '#34d399', fontSize: '16px' }}>+</span> Añadir Posición
+                        </button>
+                    </div>
+
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                         <thead>
-                            <tr style={{ borderBottom: '1px solid #333', color: '#888' }}>
-                                <th style={{ padding: '10px' }}>Sucursal</th>
-                                <th style={{ padding: '10px' }}>Tipo</th>
-                                <th style={{ padding: '10px', textAlign: 'right' }}>Precio Unit.</th>
-                                <th style={{ padding: '10px', textAlign: 'right' }}>Stock Disp.</th>
-                                <th style={{ padding: '10px', textAlign: 'center' }}>ETA Entrega</th>
-                                <th style={{ padding: '10px', textAlign: 'center' }}>Acción</th>
+                            <tr style={{ background: '#121214', color: '#888', textAlign: 'left' }}>
+                                <th style={{ padding: '10px', borderBottom: '2px solid #333', width: '50px' }}>Pos.</th>
+                                <th style={{ padding: '10px', borderBottom: '2px solid #333', width: '180px' }}>Material</th>
+                                <th style={{ padding: '10px', borderBottom: '2px solid #333', width: '100px' }}>Cant. pedido</th>
+                                <th style={{ padding: '10px', borderBottom: '2px solid #333', width: '50px' }}>UM</th>
+                                <th style={{ padding: '10px', borderBottom: '2px solid #333' }}>Denominación de posición</th>
+                                <th style={{ padding: '10px', borderBottom: '2px solid #333', textAlign: 'right', width: '100px' }}>Subtotal</th>
+                                <th style={{ padding: '10px', borderBottom: '2px solid #333', width: '50px' }}></th>
                             </tr>
                         </thead>
                         <tbody>
-                            {resultados.map((r, i) => (
-                                <tr key={i} style={{ borderBottom: '1px solid #2a2a2c' }}>
-                                    <td style={{ padding: '12px 10px', color: '#ffaa00', fontWeight: 'bold' }}>{r.NOMBRE_UBICACION}</td>
-                                    <td style={{ padding: '12px 10px', color: '#aaa' }}>{r.TIPO_UBICACION || 'Centro Comercial'}</td>
-                                    <td style={{ padding: '12px 10px', textAlign: 'right' }}>Q {r.PRECIO_UNITARIO}</td>
-                                    <td style={{ padding: '12px 10px', textAlign: 'right', fontWeight: 'bold', color: r.TOTAL_DISPONIBLE > 10 ? '#00ffcc' : '#ffaa00' }}>{r.TOTAL_DISPONIBLE}</td>
-                                    <td style={{ padding: '12px 10px', textAlign: 'center', color: '#38bdf8' }}>35 - 45 mins</td>
-                                    <td style={{ padding: '12px 10px', textAlign: 'center' }}>
-                                        <button onClick={() => iniciarOrden(r)} style={{ background: '#34d399', color: '#000', border: 'none', padding: '6px 12px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>
-                                            Despachar
-                                        </button>
+                            {posiciones.map((row, index) => (
+                                <tr key={row.id_row} style={{ borderBottom: '1px solid #2a2a2c' }}>
+                                    <td style={{ padding: '8px 10px', color: '#aaa' }}>{row.pos}</td>
+                                    
+                                    {/* BUSCADOR PREDICTIVO PRODUCTOS */}
+                                    <td style={{ padding: '8px 10px', position: 'relative' }}>
+                                        <input 
+                                            type="text" 
+                                            placeholder="Cód o Nombre..."
+                                            value={row.id_producto}
+                                            onChange={e => {
+                                                actualizarFila(index, 'id_producto', e.target.value);
+                                                setDropdownPosicion(index);
+                                            }}
+                                            onKeyDown={(e) => handleKeyDownProducto(e, index, e.target.value)} // Captura el Enter aquí
+                                            onBlur={() => setTimeout(() => setDropdownPosicion(null), 250)}
+                                            required
+                                            style={{ width: '100%', padding: '6px', background: '#121214', color: '#fff', border: '1px solid #444', borderRadius: '3px', outline: 'none' }}
+                                        />
+                                        
+                                        {dropdownPosicion === index && row.id_producto && (
+                                            <div style={{ position: 'absolute', top: '100%', left: 0, width: '380px', background: '#252528', border: '1px solid #444', borderRadius: '4px', zIndex: 10, maxHeight: '200px', overflowY: 'auto', boxShadow: '0 4px 6px rgba(0,0,0,0.5)' }}>
+                                                {catalogo.filter(m => 
+                                                    m.ID_MEDICAMENTO?.toString().includes(row.id_producto) || 
+                                                    (m.NOMBRE_COMERCIAL || m.NOMBRE_COMERCI)?.toLowerCase().includes(row.id_producto.toLowerCase()) ||
+                                                    m.DESCRIPCION?.toLowerCase().includes(row.id_producto.toLowerCase())
+                                                ).map(m => (
+                                                    <div key={m.ID_MEDICAMENTO} 
+                                                        onClick={() => {
+                                                            const nuevas = [...posiciones];
+                                                            nuevas[index].id_producto = m.ID_MEDICAMENTO.toString();
+                                                            const nom = m.NOMBRE_COMERCIAL || m.NOMBRE_COMERCI;
+                                                            const desc = m.DESCRIPCION || m.descripcion;
+                                                            
+                                                            nuevas[index].nombre = desc ? `${nom} - ${desc}` : nom;
+                                                            nuevas[index].precio = m.PRECIO_UNITARIO || m.precio_unitario || 0;
+                                                            
+                                                            setPosiciones(nuevas);
+                                                            setDropdownPosicion(null);
+                                                        }}
+                                                        style={{ padding: '8px 10px', cursor: 'pointer', borderBottom: '1px solid #333', fontSize: '12px', lineHeight: '1.4' }}
+                                                    >
+                                                        <strong style={{ color: '#00ffcc' }}>{m.ID_MEDICAMENTO}</strong> - {m.NOMBRE_COMERCIAL || m.NOMBRE_COMERCI}
+                                                        <br/><span style={{ color: '#aaa', fontSize: '11px' }}>{m.DESCRIPCION || m.descripcion}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </td>
+                                    
+                                    <td style={{ padding: '8px 10px' }}>
+                                        <input 
+                                            type="number" 
+                                            min="1"
+                                            value={row.cantidad}
+                                            onChange={e => actualizarFila(index, 'cantidad', parseInt(e.target.value) || 1)}
+                                            onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
+                                            required
+                                            style={{ width: '100%', padding: '6px', background: '#121214', color: '#fff', border: '1px solid #444', borderRadius: '3px', outline: 'none' }}
+                                        />
+                                    </td>
+                                    <td style={{ padding: '8px 10px', color: '#888' }}>UN</td>
+                                    <td style={{ padding: '8px 10px', color: row.nombre.includes('⚠️') ? '#ef4444' : '#fff' }}>{row.nombre}</td>
+                                    <td style={{ padding: '8px 10px', textAlign: 'right', color: '#aaa' }}>
+                                        {(row.precio * row.cantidad).toFixed(2)}
+                                    </td>
+                                    <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                                        {posiciones.length > 1 && (
+                                            <button type="button" onClick={() => eliminarPosicion(row.id_row)} style={{ background: 'transparent', color: '#ef4444', border: 'none', cursor: 'pointer', fontSize: '16px' }}>✖</button>
+                                        )}
                                     </td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                 </div>
-            )}
 
-            {vistaOrden && (
-                <div style={{ background: '#1c1c1e', padding: '30px', borderRadius: '8px', border: '1px solid #2a2a2c', maxWidth: '600px', margin: '0 auto' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                        <h3 style={{ color: '#aaa', margin: 0 }}>Completar Orden de Cliente</h3>
-                        <button onClick={() => setVistaOrden(false)} style={{ background: 'transparent', border: 'none', color: '#666', cursor: 'pointer' }}>✖ Cancelar</button>
-                    </div>
-                    
-                    <div style={{ background: '#252528', padding: '15px', borderRadius: '6px', marginBottom: '20px', borderLeft: '4px solid #34d399', fontSize: '13px' }}>
-                        <strong>Despachando:</strong> {productoElegido?.NOMBRE_COMERCIAL} <br/>
-                        <strong>Origen:</strong> {sucursalElegida?.NOMBRE_UBICACION} <br/>
-                        <strong style={{ color: '#38bdf8' }}>Total a cobrar: Q {(sucursalElegida?.PRECIO_UNITARIO * orden.cantidad + 25).toFixed(2)} </strong> 
-                        <span style={{ color: '#aaa', fontSize: '11px' }}>(Incluye Q25 de envío)</span>
-                    </div>
-
-                    <form onSubmit={registrarPedido} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                        
-                        {/* Checkbox de Consumidor Final (CF) */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#333', padding: '10px', borderRadius: '4px', border: '1px solid #444' }}>
-                            <input 
-                                type="checkbox" 
-                                id="checkCF"
-                                checked={orden.esCF} 
-                                onChange={e => setOrden({...orden, esCF: e.target.checked, nit: e.target.checked ? '' : orden.nit})} 
-                                style={{ transform: 'scale(1.2)' }}
-                            />
-                            <label htmlFor="checkCF" style={{ fontSize: '14px', color: '#00ffcc', cursor: 'pointer', fontWeight: 'bold' }}>Facturar a Consumidor Final (CF) - No requiere NIT</label>
-                        </div>
-
-                        {/* Buscador BP / NIT */}
-                        <div style={{ display: 'flex', gap: '10px' }}>
-                            <input 
-                                type="text" 
-                                placeholder="NIT o Código BP (Ej. 123456-7)" 
-                                value={orden.nit} 
-                                onChange={e => setOrden({...orden, nit: e.target.value})} 
-                                onBlur={buscarBP}
-                                disabled={orden.esCF}
-                                required={!orden.esCF}
-                                style={{ flex: 1, padding: '10px', background: orden.esCF ? '#222' : '#333', color: orden.esCF ? '#666' : '#fff', border: '1px solid #444', borderRadius: '4px' }}
-                            />
-                            <button type="button" onClick={buscarBP} disabled={orden.esCF} style={{ background: orden.esCF ? '#333' : '#38bdf8', color: orden.esCF ? '#666' : '#000', border: 'none', padding: '0 20px', borderRadius: '4px', fontWeight: 'bold', cursor: orden.esCF ? 'not-allowed' : 'pointer' }}>
-                                Buscar Cliente BP
-                            </button>
-                        </div>
-
-                        <input type="text" placeholder="Nombre Completo del Cliente" value={orden.cliente} onChange={e => setOrden({...orden, cliente: e.target.value})} required style={{ padding: '10px', background: '#333', color: '#fff', border: '1px solid #444', borderRadius: '4px' }}/>
-                        <input type="tel" placeholder="Teléfono de Contacto" value={orden.telefono} onChange={e => setOrden({...orden, telefono: e.target.value})} required style={{ padding: '10px', background: '#333', color: '#fff', border: '1px solid #444', borderRadius: '4px' }}/>
-                        <textarea placeholder="Dirección exacta de entrega..." value={orden.direccion} onChange={e => setOrden({...orden, direccion: e.target.value})} required style={{ padding: '10px', background: '#333', color: '#fff', border: '1px solid #444', borderRadius: '4px', minHeight: '60px' }}/>
-                        
-                        <div style={{ display: 'flex', gap: '15px' }}>
-                            <div style={{ flex: 1 }}>
-                                <label style={{ fontSize: '12px', color: '#888', display: 'block', marginBottom: '5px' }}>Cantidad de Cajas</label>
-                                <input type="number" min="1" max={sucursalElegida?.TOTAL_DISPONIBLE} value={orden.cantidad} onChange={e => setOrden({...orden, cantidad: e.target.value})} required style={{ width: '100%', padding: '10px', background: '#333', color: '#fff', border: '1px solid #444', borderRadius: '4px', boxSizing: 'border-box' }}/>
-                            </div>
-                            <div style={{ flex: 1 }}>
-                                <label style={{ fontSize: '12px', color: '#888', display: 'block', marginBottom: '5px' }}>Forma de Pago</label>
-                                <select value={orden.metodo_pago} onChange={e => setOrden({...orden, metodo_pago: e.target.value})} style={{ width: '100%', padding: '10px', background: '#333', color: '#fff', border: '1px solid #444', borderRadius: '4px', boxSizing: 'border-box' }}>
-                                    <option value="EFECTIVO">Efectivo contra entrega</option>
-                                    <option value="POS">Tarjeta (POS Inalámbrico)</option>
-                                    <option value="LINK">Link de Pago (SMS)</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <button type="submit" style={{ padding: '12px', background: '#0055ff', color: '#fff', fontWeight: 'bold', cursor: 'pointer', border: 'none', borderRadius: '4px', marginTop: '10px' }}>Registrar Orden y Asignar Repartidor</button>
-                    </form>
+                <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
+                    <button type="submit" style={{ background: '#34d399', color: '#000', border: 'none', padding: '10px 30px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px' }}>
+                        Contabilizar Documento (Grabar)
+                    </button>
                 </div>
-            )}
+            </form>
         </div>
     );
 };

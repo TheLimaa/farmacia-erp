@@ -118,6 +118,30 @@ const Dashboard = () => {
                         <div style={{ fontSize: '12px', opacity: '0.8' }}>Gestión de BPs, Clientes y Organizaciones</div>
                     </div>
 
+                    {/* Ficha 8: Activos Fijos */}
+                    <div 
+                        onClick={() => navigate('/activos-fijos')}
+                        style={{ background: '#facc15', color: '#0f172a', padding: '20px', borderRadius: '8px', cursor: 'pointer', transition: 'transform 0.2s', boxShadow: '0 4px 12px rgba(250, 204, 21, 0.2)' }}
+                        onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-3px)'}
+                        onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+                    >
+                        <div style={{ fontSize: '20px', marginBottom: '10px' }}>🖨️</div>
+                        <div style={{ fontWeight: 'bold', fontSize: '16px', marginBottom: '5px' }}>Activos Fijos</div>
+                        <div style={{ fontSize: '12px', opacity: '0.8' }}>Auditoría de patrimonio y equipamiento</div>
+                    </div>
+
+                     {/* Ficha 9: Auditoria */}
+                    <div 
+                        onClick={() => navigate('/auditoria')}
+                        style={{ background: '#facc15', color: '#0f172a', padding: '20px', borderRadius: '8px', cursor: 'pointer', transition: 'transform 0.2s', boxShadow: '0 4px 12px rgba(250, 204, 21, 0.2)' }}
+                        onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-3px)'}
+                        onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+                    >
+                        <div style={{ fontSize: '20px', marginBottom: '10px' }}>🖨️</div>
+                        <div style={{ fontWeight: 'bold', fontSize: '16px', marginBottom: '5px' }}>Auditoria</div>
+                        <div style={{ fontSize: '12px', opacity: '0.8' }}>Auditoría de patrimonio y equipamiento</div>
+                    </div>
+
                 </div>
             </div>
         </div>

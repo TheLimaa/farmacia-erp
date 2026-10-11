@@ -20,8 +20,7 @@ const Delivery = () => {
             } else {
                 // Mock visual mientras conectas la base de datos
                 setPedidos([
-                    { ID_PEDIDO: 1045, CLIENTE: 'María Rodríguez', SUCURSAL_DESPACHO: 'Farmacia Miraflores', DIRECCION: 'Zona 11, Majadas', METODO_PAGO_ACORDADO: 'POS', TOTAL: 125.50, ESTADO_PEDIDO: 'EN RUTA' },
-                    { ID_PEDIDO: 1046, CLIENTE: 'Juan Pérez', SUCURSAL_DESPACHO: 'Stand Gasolinera Puma Próceres', DIRECCION: 'Zona 10, Edificio Sixtino', METODO_PAGO_ACORDADO: 'EFECTIVO', TOTAL: 45.00, ESTADO_PEDIDO: 'EN PREPARACIÓN' }
+                   
                 ]);
             }
         } catch (error) {

@@ -13,6 +13,7 @@ const authRoutes = require('./routes/auth.routes');
 const employeeRoutes = require('./routes/employee.routes'); 
 const pedidosRoutes = require('./routes/pedidos.routes');
 const bpRoutes = require('./routes/bp.routes');
+const activosRoutes = require('./routes/activos.routes');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -31,6 +32,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/empleados', employeeRoutes);
 app.use('/api/pedidos', pedidosRoutes);
 app.use('/api/bp', bpRoutes);
+app.use('/api/activos', activosRoutes);
 
 
 // Ruta de estado de salud (Healthcheck) - Muy útil para los balanceadores de carga cuando pases a la nube

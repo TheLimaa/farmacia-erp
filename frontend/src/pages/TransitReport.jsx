@@ -8,16 +8,11 @@ const TransitReport = () => {
     const [stockTransito, setStockTransito] = useState([]);
 
     const [catalogoMedicamentos, setCatalogoMedicamentos] = useState([
-        { ID_MEDICAMENTO: 1, NOMBRE_COMERCIAL: 'Paracetamol 500 mg' },
-        { ID_MEDICAMENTO: 2, NOMBRE_COMERCIAL: 'Ibuprofeno 400 mg' },
-        { ID_MEDICAMENTO: 3, NOMBRE_COMERCIAL: 'Acetaminofén 500 mg' },
-        { ID_MEDICAMENTO: 4, NOMBRE_COMERCIAL: 'Ciprofloxacina' }
+        
     ]);
     
     const [catalogoSucursales] = useState([
-        { ID_SUCURSAL: 1, NOMBRE_UBICACION: 'Farmacia Miraflores' },
-        { ID_SUCURSAL: 2, NOMBRE_UBICACION: 'Stand Gasolinera Puma Próceres' },
-        { ID_SUCURSAL: 3, NOMBRE_UBICACION: 'Farmacia Oakland Mall' }
+        
     ]);
 
     const [showSucursalHelp, setShowSucursalHelp] = useState(false);
