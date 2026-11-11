@@ -1,109 +1,279 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Cargando from '../components/Cargando'; // <--- Importamos la plantilla de carga
 
 const Delivery = () => {
     const navigate = useNavigate();
-    const [pedidos, setPedidos] = useState([]);
+    
+    // --- LÓGICA DE ROLES Y SUCURSAL ---
+    const user = JSON.parse(sessionStorage.getItem('user') || '{}');
+    const rolUsuario = (user.rol || '').toUpperCase();
+    const esAdmin = rolUsuario === 'ADMINISTRADOR';
+
+    const [pedidosOriginales, setPedidosOriginales] = useState([]);
+    const [pedidosFiltrados, setPedidosFiltrados] = useState([]);
     const [mensaje, setMensaje] = useState('');
+    const [sucursalUsuario, setSucursalUsuario] = useState('');
+    const [cargando, setCargando] = useState(true); // <--- Estado de carga añadido
+    
+    // Función para obtener la fecha actual en formato YYYY-MM-DD
+    const obtenerFechaHoy = () => {
+        const hoy = new Date();
+        return hoy.toISOString().split('T')[0];
+    };
+
+    // Estados para el filtro de fechas (inicializados con el día actual por defecto)
+    const [fechaInicio, setFechaInicio] = useState(obtenerFechaHoy());
+    const [fechaFin, setFechaFin] = useState(obtenerFechaHoy());
 
     useEffect(() => {
-        cargarPedidos();
-    }, []);
+        const cargarDatos = async () => {
+            const tiempoMinimo = new Promise(resolve => setTimeout(resolve, 1000));
 
-    const cargarPedidos = async () => {
-        try {
-            // Reemplazar con el endpoint real de tu backend
-            const res = await fetch('http://localhost:3000/api/pedidos/pendientes');
-            const data = await res.json();
-            if(data.success) {
-                setPedidos(data.data);
-            } else {
-                // Mock visual mientras conectas la base de datos
-                setPedidos([
-                   
+            try {
+                // Si NO es administrador (es Gerente o Cajero), obtenemos su sucursal y pedidos en paralelo con el tiempo mínimo
+                let sucursalDetectada = '';
+                
+                if (!esAdmin) {
+                    const resUser = await fetch('http://localhost:3000/api/usuarios').then(res => res.json()).catch(() => ({ success: false }));
+                    if (resUser.success) {
+                        const currentUser = resUser.data.find(u => 
+                            (u.USERNAME || u.username) === user.nombre || 
+                            (u.USERNAME || u.username) === user.usuario
+                        );
+                        if (currentUser) {
+                            sucursalDetectada = currentUser.SUCURSAL || currentUser.sucursal || '';
+                            setSucursalUsuario(sucursalDetectada);
+                        }
+                    }
+                }
+
+                const [resPedidos] = await Promise.all([
+                    fetch('http://localhost:3000/api/pedidos/todos').then(res => res.json()).catch(() => ({ success: false })),
+                    tiempoMinimo
                 ]);
+
+                if (resPedidos.success) {
+                    setPedidosOriginales(resPedidos.data);
+                } else {
+                    setPedidosOriginales([]);
+                }
+            } catch (error) {
+                console.error('Error fetching pedidos:', error);
+                setPedidosOriginales([]);
+            } finally {
+                setCargando(false);
             }
-        } catch (error) {
-            console.error('Error fetching pedidos:', error);
-            // Mock Fallback
-            setPedidos([
-                { ID_PEDIDO: 1045, CLIENTE: 'María Rodríguez', SUCURSAL_DESPACHO: 'Farmacia Miraflores', DIRECCION: 'Zona 11, Majadas', METODO_PAGO_ACORDADO: 'POS', TOTAL: 125.50, ESTADO_PEDIDO: 'EN RUTA' },
-                { ID_PEDIDO: 1046, CLIENTE: 'Juan Pérez', SUCURSAL_DESPACHO: 'Stand Gasolinera Puma Próceres', DIRECCION: 'Zona 10, Edificio Sixtino', METODO_PAGO_ACORDADO: 'EFECTIVO', TOTAL: 45.00, ESTADO_PEDIDO: 'EN PREPARACIÓN' }
-            ]);
+        };
+
+        cargarDatos();
+    }, [esAdmin]);
+
+    // Efecto para aplicar el filtro cada vez que cambian las fechas, la lista o la sucursal
+    useEffect(() => {
+        aplicarFiltro(pedidosOriginales);
+    }, [fechaInicio, fechaFin, pedidosOriginales, sucursalUsuario]);
+
+    const aplicarFiltro = (listaPedidos) => {
+        // REGLA: Si no hay ambas fechas seleccionadas, no mostrar NADA.
+        if (!fechaInicio || !fechaFin) {
+            setPedidosFiltrados([]);
+            return;
         }
+
+        const filtrados = listaPedidos.filter(p => {
+            // 1. Filtro estricto por Sucursal si el usuario es Gerente o Cajero
+            if (!esAdmin && sucursalUsuario) {
+                const sucursalPedido = p.SUCURSAL_DESPACHO || p.sucursal_despacho || '';
+                if (sucursalPedido !== sucursalUsuario) return false;
+            }
+
+            // 2. Filtro por rango de fechas
+            const fechaString = p.FECHA || p.fecha_hora_solicitud || p.fecha_creacion;
+            if (!fechaString) return false;
+            
+            const fechaPedido = new Date(fechaString).toISOString().split('T')[0];
+            return fechaPedido >= fechaInicio && fechaPedido <= fechaFin;
+        });
+
+        setPedidosFiltrados(filtrados);
+    };
+
+    const limpiarFiltros = () => {
+        setFechaInicio(obtenerFechaHoy());
+        setFechaFin(obtenerFechaHoy());
     };
 
     const handleEntregar = async (idPedido) => {
-        if(!window.confirm(`¿Confirmar la entrega exitosa del pedido #${idPedido}?`)) return;
+        if (!window.confirm(`¿Confirmar la entrega exitosa del pedido #${idPedido}?`)) return;
         
         try {
             const res = await fetch(`http://localhost:3000/api/pedidos/${idPedido}/entregar`, { method: 'PUT' });
             const data = await res.json();
             
-            setMensaje(`Pedido #${idPedido} contabilizado como entregado exitosamente.`);
-            setPedidos(pedidos.filter(p => p.ID_PEDIDO !== idPedido));
+            if (data.success) {
+                setMensaje(`✅ Pedido #${idPedido} contabilizado como entregado exitosamente.`);
+                setPedidosOriginales(prev => prev.map(p => p.ID_PEDIDO === idPedido ? { ...p, ESTADO_PEDIDO: 'ENTREGADO' } : p));
+            } else {
+                setMensaje(`❌ ${data.message}`);
+            }
             setTimeout(() => setMensaje(''), 4000);
             
         } catch (error) {
-            // Simulación en caso de que el backend aún no tenga la ruta
-            setMensaje(`Pedido #${idPedido} contabilizado como entregado exitosamente (Modo Local).`);
-            setPedidos(pedidos.filter(p => p.ID_PEDIDO !== idPedido));
+            setMensaje(`✅ Pedido #${idPedido} contabilizado como entregado exitosamente (Modo Local).`);
+            setPedidosOriginales(prev => prev.map(p => p.ID_PEDIDO === idPedido ? { ...p, ESTADO_PEDIDO: 'ENTREGADO' } : p));
             setTimeout(() => setMensaje(''), 4000);
         }
     };
 
+    const handleCancelar = async (idPedido) => {
+        if (!window.confirm(`¿Está seguro de cancelar el pedido #${idPedido}? El stock será devuelto al inventario.`)) return;
+        
+        try {
+            const res = await fetch(`http://localhost:3000/api/pedidos/${idPedido}/cancelar`, { method: 'PUT' });
+            const data = await res.json();
+            
+            if (data.success) {
+                setMensaje(`🚫 Pedido #${idPedido} cancelado y stock reincorporado al inventario.`);
+                setPedidosOriginales(prev => prev.map(p => p.ID_PEDIDO === idPedido ? { ...p, ESTADO_PEDIDO: 'CANCELADO' } : p));
+            } else {
+                setMensaje(`❌ ${data.message}`);
+            }
+            setTimeout(() => setMensaje(''), 4000);
+        } catch (error) {
+            console.error('Error al cancelar pedido:', error);
+            setMensaje(`🚫 Pedido #${idPedido} cancelado (Modo Local).`);
+            setPedidosOriginales(prev => prev.map(p => p.ID_PEDIDO === idPedido ? { ...p, ESTADO_PEDIDO: 'CANCELADO' } : p));
+            setTimeout(() => setMensaje(''), 4000);
+        }
+    };
+
+    // Si está cargando, retornamos la plantilla reutilizable
+    if (cargando) {
+        return <Cargando mensaje="Cargando..." />;
+    }
+
     return (
-        <div style={{ padding: '40px 20px', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#fff' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', maxWidth: '1200px', margin: '0 auto 30px auto' }}>
-                <button onClick={() => navigate('/dashboard')} style={{ background: '#333', color: '#fff', border: '1px solid #555', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
+        <div className="delivery-container">
+            <div className="delivery-header">
+                <button onClick={() => navigate('/dashboard')} className="btn-regresar-delivery">
                     ← Regresar al Dashboard
                 </button>
-                <div style={{ textAlign: 'center', flex: 1 }}>
-                    <h2 style={{ fontSize: '22px', margin: '0 0 8px 0', fontWeight: '500' }}>Logística Delivery - Monitor de Entregas</h2>
-                    <p style={{ color: '#666', margin: 0, fontSize: '14px' }}>Control de envíos de última milla a clientes.</p>
+                <div className="delivery-title-container">
+                    <h2>
+                        Logística Delivery - Monitor de Entregas {!esAdmin && sucursalUsuario ? `(${sucursalUsuario})` : ''}
+                    </h2>
+                    <p>Control de envíos de última milla a clientes.</p>
                 </div>
                 <div style={{ width: '150px' }}></div>
             </div>
 
-            {mensaje && <div style={{ maxWidth: '1200px', margin: '0 auto 20px auto', padding: '12px', background: '#252528', border: '1px solid #a78bfa', color: '#a78bfa', borderRadius: '6px', textAlign: 'center', fontWeight: 'bold' }}>{mensaje}</div>}
+            {/* SECCIÓN DE FILTROS */}
+            <div className="delivery-filter-card">
+                <div className="delivery-filter-label-title">Filtrar por fecha:</div>
+                <div className="delivery-filter-group">
+                    <label>Desde:</label>
+                    <input 
+                        type="date" 
+                        value={fechaInicio} 
+                        onChange={(e) => setFechaInicio(e.target.value)}
+                        className="delivery-date-input"
+                    />
+                </div>
+                <div className="delivery-filter-group">
+                    <label>Hasta:</label>
+                    <input 
+                        type="date" 
+                        value={fechaFin} 
+                        onChange={(e) => setFechaFin(e.target.value)}
+                        className="delivery-date-input"
+                    />
+                </div>
+                <button 
+                    onClick={limpiarFiltros} 
+                    className="btn-restablecer-fecha"
+                >
+                    Restablecer a Hoy
+                </button>
+            </div>
 
-            <div style={{ background: '#1c1c1e', padding: '25px', borderRadius: '8px', border: '1px solid #2a2a2c', maxWidth: '1200px', margin: '0 auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+            {mensaje && (
+                <div className={`delivery-mensaje-alerta ${mensaje.includes('❌') || mensaje.includes('🚫') ? 'error' : 'exito'}`}>
+                    {mensaje}
+                </div>
+            )}
+
+            <div className="delivery-table-card">
+                <table className="delivery-table">
                     <thead>
-                        <tr style={{ borderBottom: '1px solid #333', color: '#888' }}>
-                            <th style={{ padding: '12px' }}>ID Pedido</th>
-                            <th style={{ padding: '12px' }}>Cliente y Dirección</th>
-                            <th style={{ padding: '12px' }}>Sucursal Origen</th>
-                            <th style={{ padding: '12px' }}>Estado</th>
-                            <th style={{ padding: '12px', textAlign: 'right' }}>Total a Cobrar</th>
-                            <th style={{ padding: '12px', textAlign: 'center' }}>Método</th>
-                            <th style={{ padding: '12px', textAlign: 'center' }}>Acción</th>
+                        <tr>
+                            <th>ID Pedido</th>
+                            <th>Cliente y Dirección</th>
+                            <th>Sucursal Origen</th>
+                            <th>Estado</th>
+                            <th className="align-right">Total a Cobrar</th>
+                            <th className="align-center">Método</th>
+                            <th className="align-center">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {pedidos.length > 0 ? (
-                            pedidos.map(p => (
-                                <tr key={p.ID_PEDIDO} style={{ borderBottom: '1px solid #2a2a2c' }}>
-                                    <td style={{ padding: '15px 12px', color: '#00ffcc', fontWeight: 'bold' }}>#{p.ID_PEDIDO}</td>
-                                    <td style={{ padding: '15px 12px' }}>
-                                        <div style={{ color: '#fff', fontWeight: 'bold' }}>{p.CLIENTE}</div>
-                                        <div style={{ color: '#888', fontSize: '11px', marginTop: '4px' }}>{p.DIRECCION}</div>
-                                    </td>
-                                    <td style={{ padding: '15px 12px', color: '#ffaa00' }}>{p.SUCURSAL_DESPACHO}</td>
-                                    <td style={{ padding: '15px 12px', color: p.ESTADO_PEDIDO === 'EN RUTA' ? '#a78bfa' : '#38bdf8', fontWeight: 'bold' }}>{p.ESTADO_PEDIDO}</td>
-                                    <td style={{ padding: '15px 12px', textAlign: 'right', fontWeight: 'bold' }}>Q {p.TOTAL?.toFixed(2)}</td>
-                                    <td style={{ padding: '15px 12px', textAlign: 'center' }}>
-                                        <span style={{ background: '#333', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', color: '#ddd' }}>{p.METODO_PAGO_ACORDADO}</span>
-                                    </td>
-                                    <td style={{ padding: '15px 12px', textAlign: 'center' }}>
-                                        <button onClick={() => handleEntregar(p.ID_PEDIDO)} style={{ background: '#00cc66', color: '#000', border: 'none', padding: '8px 15px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>
-                                            Confirmar Entrega
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))
+                        {pedidosFiltrados.length > 0 ? (
+                            pedidosFiltrados.map(p => {
+                                const isCancelado = p.ESTADO_PEDIDO === 'CANCELADO';
+                                const isEntregado = p.ESTADO_PEDIDO === 'ENTREGADO';
+                                const isTerminado = isCancelado || isEntregado;
+
+                                const estadoClase = 
+                                    p.ESTADO_PEDIDO === 'EN RUTA' ? 'estado-en-ruta' : 
+                                    p.ESTADO_PEDIDO === 'CANCELADO' ? 'estado-cancelado' : 
+                                    p.ESTADO_PEDIDO === 'ENTREGADO' ? 'estado-entregado' : 'estado-default';
+                                
+                                return (
+                                    <tr key={p.ID_PEDIDO} style={{ opacity: isTerminado ? 0.6 : 1 }}>
+                                        <td className="td-id-pedido">#{p.ID_PEDIDO}</td>
+                                        <td>
+                                            <div className="td-cliente-nombre">{p.CLIENTE}</div>
+                                            <div className="td-cliente-direccion">{p.DIRECCION}</div>
+                                        </td>
+                                        <td className="td-sucursal-origen">{p.SUCURSAL_DESPACHO}</td>
+                                        <td className={`td-estado-pedido ${estadoClase}`}>
+                                            {p.ESTADO_PEDIDO}
+                                        </td>
+                                        <td className="align-right" style={{ fontWeight: 'bold' }}>
+                                            {isCancelado ? <span className="total-tachado">Q {p.TOTAL?.toFixed(2)}</span> : `Q ${p.TOTAL?.toFixed(2)}`}
+                                        </td>
+                                        <td className="align-center">
+                                            <span className="badge-metodo-pago">{p.METODO_PAGO_ACORDADO}</span>
+                                        </td>
+                                        <td className="align-center">
+                                            <div className="acciones-wrapper">
+                                                <button 
+                                                    onClick={() => handleEntregar(p.ID_PEDIDO)} 
+                                                    disabled={isTerminado}
+                                                    className="btn-confirmar-entrega"
+                                                >
+                                                    Confirmar Entrega
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleCancelar(p.ID_PEDIDO)} 
+                                                    disabled={isTerminado}
+                                                    className="btn-cancelar-pedido"
+                                                >
+                                                    Cancelar Pedido
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            })
                         ) : (
-                            <tr><td colSpan="7" style={{ padding: '30px', textAlign: 'center', color: '#555' }}>No hay pedidos pendientes de entrega en ruta.</td></tr>
+                            <tr>
+                                <td colSpan="7" className="delivery-tabla-vacia">
+                                    {(!fechaInicio || !fechaFin) 
+                                        ? 'Seleccione un rango de fechas para ver los pedidos.' 
+                                        : 'No hay pedidos de delivery para las fechas seleccionadas en esta sucursal.'}
+                                </td>
+                            </tr>
                         )}
                     </tbody>
                 </table>

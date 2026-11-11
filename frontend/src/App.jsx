@@ -11,8 +11,10 @@ import RRHH from './pages/RRHH';
 import Inventory from './pages/Inventory';
 import StockReport from './pages/StockReport';
 import TransitReport from './pages/TransitReport';
-import BusinessPartner from './pages/BusinessPartner';
 import ActivosFijos from './pages/ActivosFijos';
+import Sucursales from './pages/Sucursales';
+import Usuarios from './pages/Usuarios';
+import RepartidorPortal from './pages/RepartidorPortal'; // <--- 1. Importar el portal de repartidor
 import './App.css';
 
 function App() {
@@ -24,20 +26,32 @@ function App() {
             <Routes>
               <Route path="/login" element={<Login />} />
               
-              {/* Rutas protegidas para cualquier usuario con sesión activa */}
-              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-              <Route path="/call-center" element={<ProtectedRoute><CallCenter /></ProtectedRoute>} />
-              <Route path="/logistica" element={<ProtectedRoute><Logistic /></ProtectedRoute>} />
-              <Route path="/delivery" element={<ProtectedRoute><Delivery /></ProtectedRoute>} />
-              <Route path="/registros-medicamento" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
-              <Route path="/stock" element={<ProtectedRoute><StockReport /></ProtectedRoute>} />
-              <Route path="/transito" element={<ProtectedRoute><TransitReport /></ProtectedRoute>} />
-              <Route path="/business-partner" element={<ProtectedRoute><BusinessPartner /></ProtectedRoute>} />
+              {/* DASHBOARD: Accesible para todos los roles válidos */}
+              <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'GERENTE', 'CAJERO', 'VENDEDOR']}><Dashboard /></ProtectedRoute>} />
               
-              {/* Ruta protegida exclusiva para Administradores (Auditoría Financiera) */}
-              <Route path="/auditoria" element={<ProtectedRoute requiredRole="ADMINISTRADOR"><Audit /></ProtectedRoute>} />
-              <Route path="/rrhh" element={<ProtectedRoute requiredRole="ADMINISTRADOR"><RRHH /></ProtectedRoute>} />
-              <Route path="/activos-fijos" element={<ProtectedRoute requiredRole="ADMINISTRADOR"><ActivosFijos /></ProtectedRoute>} />
+              {/* PORTAL EXCLUSIVO REPARTIDORES */}
+              <Route path="/repartidor" element={<ProtectedRoute allowedRoles={['REPARTIDOR', 'ADMINISTRADOR']}><RepartidorPortal /></ProtectedRoute>} />
+              
+              {/* OPERATIVO BÁSICO: Vendedor en adelante */}
+              <Route path="/stock" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'GERENTE', 'CAJERO', 'VENDEDOR']}><StockReport /></ProtectedRoute>} />
+              <Route path="/call-center" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'GERENTE', 'CAJERO', 'VENDEDOR']}><CallCenter /></ProtectedRoute>} />
+              
+              {/* LOGÍSTICA BÁSICA: Cajero en adelante */}
+              <Route path="/logistica" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'GERENTE', 'CAJERO']}><Logistic /></ProtectedRoute>} />
+              <Route path="/delivery" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'GERENTE', 'CAJERO']}><Delivery /></ProtectedRoute>} />
+              
+              {/* OPERATIVO GERENCIAL: Gerente y Administrador */}
+              <Route path="/transito" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'GERENTE']}><TransitReport /></ProtectedRoute>} />
+              <Route path="/activos-fijos" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'GERENTE']}><ActivosFijos /></ProtectedRoute>} />
+              <Route path="/auditoria" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'GERENTE']}><Audit /></ProtectedRoute>} />
+              
+              {/* EXCLUSIVO ADMINISTRADORES */}
+              <Route path="/registros-medicamento" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR']}><Inventory /></ProtectedRoute>} />
+              <Route path="/rrhh" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR']}><RRHH /></ProtectedRoute>} />
+              <Route path="/sucursales" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR']}><Sucursales/></ProtectedRoute>} />
+              <Route path="/usuarios" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR']}><Usuarios/></ProtectedRoute>} />
+              
+              {/* Fallback */}
               <Route path="*" element={<Navigate to="/login" replace />} />
             </Routes>
           </main>

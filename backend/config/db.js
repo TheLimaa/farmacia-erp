@@ -1,27 +1,48 @@
-const oracledb = require('oracledb');
+const { Pool } = require('pg');
 require('dotenv').config();
 
+// Configuración del pool de conexiones para PostgreSQL / Supabase
+const pool = new Pool({
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT || 5432,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    ssl: {
+        rejectUnauthorized: false // Obligatorio para conexiones seguras a la nube (Supabase)
+    },
+    max: 10,       // Máximo de conexiones en el pool
+    min: 2,        // Mínimo de conexiones inactivas
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 2000,
+});
+
+// Función para probar e inicializar la conexión al arrancar el servidor
 async function initialize() {
-  try {
-    // Configuración del pool de conexiones
-    await oracledb.createPool({
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      connectString: process.env.DB_CONNECTION_STRING,
-      poolMin: 2,
-      poolMax: 10,
-      poolIncrement: 2
-    });
-    console.log('✅ Pool de conexiones a Oracle DB inicializado exitosamente.');
-  } catch (err) {
-    console.error('❌ Error al inicializar el pool de base de datos:', err);
-    process.exit(1);
-  }
+    try {
+        const client = await pool.connect();
+        console.log('¡Conexión exitosa al pool de PostgreSQL (Supabase)!');
+        client.release();
+    } catch (err) {
+        console.error('Error al conectar con la base de datos PostgreSQL:', err);
+        process.exit(1);
+    }
 }
 
-// Opcional: Función para cerrar el pool al apagar el servidor
+// Función para cerrar el pool de conexiones al apagar el servidor (Graceful shutdown)
 async function close() {
-  await oracledb.getPool().close(0);
+    await pool.end();
+    console.log('Pool de conexiones de PostgreSQL cerrado.');
 }
 
-module.exports = { initialize, close };
+// Función auxiliar para ejecutar consultas directas desde los controladores
+async function query(text, params) {
+    return await pool.query(text, params);
+}
+
+module.exports = { 
+    initialize, 
+    close, 
+    query,
+    pool 
+};

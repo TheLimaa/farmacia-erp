@@ -1,0 +1,305 @@
+.activos-fijos-container {
+    padding: 20px 15px;
+    font-family: system-ui, -apple-system, sans-serif;
+    color: #fff;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.activos-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.btn-regresar {
+    background: #333;
+    color: #fff;
+    border: 1px solid #555;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.activos-title-container {
+    text-align: center;
+    flex: 1;
+    min-width: 200px;
+}
+
+.activos-title-container h2 {
+    font-size: 22px;
+    margin: 0 0 8px 0;
+    font-weight: 500;
+}
+
+.activos-title-container p {
+    color: #666;
+    margin: 0;
+    font-size: 14px;
+}
+
+.mensaje-alerta {
+    max-width: 1200px;
+    margin: 0 auto 20px auto;
+    padding: 12px;
+    background: #252528;
+    border-radius: 6px;
+    text-align: center;
+    font-weight: bold;
+}
+
+.mensaje-alerta.error {
+    border: 1px solid #ef4444;
+    color: #ef4444;
+}
+
+.mensaje-alerta.exito {
+    border: 1px solid #34d399;
+    color: #34d399;
+}
+
+.grid-superior {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 20px;
+    max-width: 1200px;
+    margin: 0 auto 30px auto;
+}
+
+@media (max-width: 900px) {
+    .grid-superior {
+        grid-template-columns: 1fr;
+    }
+}
+
+.card-formulario,
+.card-resumen,
+.card-tabla {
+    background: #1c1c1e;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #2a2a2c;
+    box-sizing: border-box;
+}
+
+.card-formulario h3,
+.card-tabla h3 {
+    color: #aaa;
+    font-size: 15px;
+    margin-bottom: 20px;
+}
+
+.form-registro {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.form-row {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.input-group {
+    flex: 1;
+    min-width: 200px;
+    position: relative;
+}
+
+.input-label {
+    font-size: 12px;
+    color: #888;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.input-field,
+.select-field {
+    width: 100%;
+    padding: 10px;
+    background: #333;
+    color: #fff;
+    border: 1px solid #444;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+.sucursales-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    background: #252528;
+    border: 1px solid #444;
+    border-radius: 4px;
+    z-index: 10;
+    max-height: 150px;
+    overflow-y: auto;
+    margin-top: 4px;
+}
+
+.sucursal-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    border-bottom: 1px solid #333;
+}
+
+.sucursal-item:hover {
+    background: #3a3a3d;
+}
+
+.sucursal-id {
+    color: #00ffcc;
+    margin-right: 8px;
+}
+
+.btn-submit {
+    padding: 12px;
+    background: #facc15;
+    color: #000;
+    font-weight: bold;
+    cursor: pointer;
+    border: none;
+    border-radius: 4px;
+    margin-top: 10px;
+    width: 100%;
+}
+
+.card-resumen {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 30px 20px;
+}
+
+.card-resumen-icono {
+    font-size: 48px;
+    margin-bottom: 10px;
+}
+
+.card-resumen h3 {
+    color: #aaa;
+    font-size: 16px;
+    margin: 0 0 10px 0;
+}
+
+.patrimonio-valor {
+    font-size: 28px;
+    font-weight: bold;
+    color: #facc15;
+    text-align: center;
+}
+
+.patrimonio-descripcion {
+    color: #666;
+    font-size: 13px;
+    text-align: center;
+    margin-top: 15px;
+    max-width: 300px;
+}
+
+.card-tabla {
+    max-width: 1200px;
+    margin: 0 auto;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.tabla-header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.filtro-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.filtro-container label {
+    font-size: 13px;
+    color: #888;
+}
+
+.select-filtro {
+    padding: 6px 12px;
+    background: #121214;
+    color: #fff;
+    border: 1px solid #444;
+    border-radius: 4px;
+    outline: none;
+}
+
+.tabla-activos {
+    width: 100%;
+    min-width: 700px;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 13px;
+}
+
+.tabla-activos th {
+    border-bottom: 1px solid #333;
+    color: #888;
+    padding: 12px;
+}
+
+.tabla-activos td {
+    padding: 15px 12px;
+    border-bottom: 1px solid #2a2a2c;
+}
+
+.codigo-activo { color: #38bdf8; font-weight: bold; }
+.sucursal-activo { color: #ffaa00; }
+.clasificacion-activo { color: #aaa; }
+.descripcion-activo { color: #fff; }
+.valor-activo { text-align: right; font-weight: bold; }
+.estado-activo-td { text-align: center; }
+
+.select-estado,
+.badge-estado {
+    color: #000;
+    padding: 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: bold;
+    text-align: center;
+}
+
+.select-estado {
+    border: none;
+    cursor: pointer;
+    outline: none;
+    width: 120px;
+}
+
+.badge-estado {
+    display: inline-block;
+    width: 100px;
+}
+
+.estado-activo { background: #00cc66 !important; }
+.estado-reparacion { background: #facc15 !important; }
+.estado-baja { background: #ef4444 !important; }
+.fila-baja { opacity: 0.5; }
+
+.tabla-vacia {
+    padding: 30px;
+    text-align: center;
+    color: #555;
+}

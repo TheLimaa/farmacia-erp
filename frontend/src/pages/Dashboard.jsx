@@ -1,146 +1,241 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Cargando from '../components/Cargando';
+import logoVita from '../assets/Vita+.svg';
 
 const Dashboard = () => {
     const navigate = useNavigate();
-    const user = JSON.parse(sessionStorage.getItem('user') || '{"usuario": "Admin", "rol": "ADMINISTRADOR"}');
+    
+    const sessionUser = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
+    
+    const [userData, setUserData] = useState({
+        nombreCompleto: sessionUser.nombre_empleado || sessionUser.nombre || sessionUser.usuario || sessionUser.username || 'Usuario',
+        rol: (sessionUser.rol || sessionUser.ROL || '').toUpperCase(),
+        sucursal: sessionUser.sucursal || sessionUser.SUCURSAL || ''
+    });
+
+    const [cargando, setCargando] = useState(true);
+
+    useEffect(() => {
+        const obtenerDetallesUsuario = async () => {
+            const usuarioBuscado = (sessionUser.usuario || sessionUser.username || sessionUser.nombre || '').toString().toLowerCase();
+            const tiempoMinimo = new Promise(resolve => setTimeout(resolve, 500));
+
+            try {
+                const [res] = await Promise.all([
+                    usuarioBuscado ? fetch('http://localhost:3000/api/usuarios') : Promise.resolve(null),
+                    tiempoMinimo
+                ]);
+
+                if (res) {
+                    const data = await res.json();
+                    
+                    if (data.success) {
+                        const match = data.data.find(u => {
+                            const dbUser = (u.USERNAME || u.username || u.USUARIO || u.nombre_usuario || '').toString().toLowerCase();
+                            return dbUser === usuarioBuscado;
+                        });
+
+                        if (match) {
+                            const nombreReal = match.NOMBRE_EMPLEADO || match.nombre_empleado || match.NOMBRE || sessionUser.nombre || sessionUser.usuario;
+                            const rolReal = (match.ROL || match.rol || sessionUser.rol || '').toUpperCase();
+                            const sucursalReal = match.SUCURSAL || match.sucursal || match.NOMBRE_UBICACION || '';
+
+                            setUserData({
+                                nombreCompleto: nombreReal,
+                                rol: rolReal,
+                                sucursal: sucursalReal
+                            });
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error("Error al obtener detalles del usuario:", error);
+            } finally {
+                setCargando(false);
+            }
+        };
+
+        obtenerDetallesUsuario();
+    }, []);
 
     const handleLogout = () => {
+        localStorage.clear();
         sessionStorage.clear();
         navigate('/login');
     };
 
+    const permisosPorRol = {
+        'REPARTIDOR': [],
+        'VENDEDOR': ['/stock', '/call-center'],
+        'CAJERO': ['/stock', '/call-center', '/delivery', '/transito'],
+        'GERENTE': ['/stock', '/call-center', '/transito', '/delivery', '/activos-fijos', '/auditoria'],
+        'ADMINISTRADOR': ['*']
+    };
+
+    const tienePermiso = (ruta) => {
+        const rolUsuario = (userData.rol || '').toUpperCase();
+        const permisos = permisosPorRol[rolUsuario] || [];
+        
+        if (permisos.includes('*')) return true;
+        return permisos.includes(ruta);
+    };
+
+    if (cargando) {
+        return <Cargando mensaje="Cargando..." />;
+    }
+
     return (
-        <div style={{ minHeight: '100vh', background: '#121214', color: '#fff', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+        <div className="dashboard-container">
             
-            {/* Barra Superior SAP Fiori */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 25px', background: '#18181b', borderBottom: '1px solid #27272a' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                    <span style={{ fontSize: '15px', fontWeight: '500' }}>Página de inicio</span>
+            {/* Barra Superior con Logo Más Grande */}
+            <div className="dashboard-topbar">
+                <div className="dashboard-topbar-title-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <img 
+                        src={logoVita} 
+                        alt="Logo Vitta+" 
+                        style={{ width: '56px', height: '56px', objectFit: 'contain' }} 
+                    />
+                    <span className="dashboard-topbar-title">Página de inicio — Farmacias Vita+</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '20px', fontSize: '14px' }}>
-                    <span style={{ color: '#a1a1aa' }}>Conectado: <strong style={{ color: '#fff' }}>{user.usuario}</strong> ({user.rol})</span>
-                    <button onClick={handleLogout} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Cerrar Sesión</button>
+                <div className="dashboard-user-info-wrapper">
+                    <span className="dashboard-user-meta">
+                        Conectado: <strong className="dashboard-user-name-highlight">{userData.nombreCompleto}</strong> ({userData.rol || 'SIN ROL'} {userData.sucursal ? `- ${userData.sucursal}` : ''})
+                    </span>
+                    <button onClick={handleLogout} className="btn-cerrar-sesion">Cerrar Sesión</button>
                 </div>
             </div>
 
             {/* Sub-barra de navegación */}
-            <div style={{ padding: '15px 25px', background: '#18181b', borderBottom: '1px solid #27272a', fontSize: '14px', color: '#38bdf8', fontWeight: '500' }}>
+            <div className="dashboard-subnav">
                 ≡ &nbsp; INICIO
             </div>
 
             {/* Contenido Principal / Fichas (Tiles) */}
-            <div style={{ padding: '30px 25px' }}>
-                <h3 style={{ fontSize: '16px', color: '#a1a1aa', marginBottom: '20px', fontWeight: '600' }}>Páginas Operativas</h3>
+            <div className="dashboard-content">
+                <h3 className="dashboard-section-title">Páginas Operativas</h3>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '20px', marginBottom: '40px' }}>
+                <div className="dashboard-tiles-grid">
                     
                     {/* Ficha 1: Gestión de Inventarios y Catálogo */}
-                    <div 
-                        onClick={() => navigate('/registros-medicamento')}
-                        style={{ background: '#38bdf8', color: '#0f172a', padding: '20px', borderRadius: '8px', cursor: 'pointer', transition: 'transform 0.2s', boxShadow: '0 4px 12px rgba(56, 189, 248, 0.2)' }}
-                        onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-3px)'}
-                        onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
-                    >
-                        <div style={{ fontSize: '20px', marginBottom: '10px' }}>📦</div>
-                        <div style={{ fontWeight: 'bold', fontSize: '16px', marginBottom: '5px' }}>Gestión de Inventarios</div>
-                        <div style={{ fontSize: '12px', opacity: '0.8' }}>Registrar medicamento y asignación de lotes</div>
-                    </div>
+                    {tienePermiso('/registros-medicamento') && (
+                        <div 
+                            onClick={() => navigate('/registros-medicamento')}
+                            className="dashboard-tile tile-inventario"
+                        >
+                            <div className="dashboard-tile-icono">📦</div>
+                            <div className="dashboard-tile-titulo">Gestión de Inventarios</div>
+                            <div className="dashboard-tile-descripcion">Registrar medicamento y asignación de lotes</div>
+                        </div>
+                    )}
 
-                    {/* Ficha 2: Visualizar Stocks (MB52) */}
-                    <div 
-                        onClick={() => navigate('/stock')}
-                        style={{ background: '#f472b6', color: '#0f172a', padding: '20px', borderRadius: '8px', cursor: 'pointer', transition: 'transform 0.2s', boxShadow: '0 4px 12px rgba(244, 114, 182, 0.2)' }}
-                        onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-3px)'}
-                        onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
-                    >
-                        <div style={{ fontSize: '20px', marginBottom: '10px' }}>📊</div>
-                        <div style={{ fontWeight: 'bold', fontSize: '16px', marginBottom: '5px' }}>Reporte de Stocks</div>
-                        <div style={{ fontSize: '12px', opacity: '0.8' }}>Visualizar stocks en almacén por material</div>
-                    </div>
+                    {/* Ficha 2: Visualizar Stocks */}
+                    {tienePermiso('/stock') && (
+                        <div 
+                            onClick={() => navigate('/stock')}
+                            className="dashboard-tile tile-stocks"
+                        >
+                            <div className="dashboard-tile-icono">📊</div>
+                            <div className="dashboard-tile-titulo">Reporte de Stocks</div>
+                            <div className="dashboard-tile-descripcion">Visualizar stocks en almacén</div>
+                        </div>
+                    )}
 
-                    {/* Ficha 3: Stock en Tránsito (MB5T) */}
-                    <div 
-                        onClick={() => navigate('/transito')}
-                        style={{ background: '#fbbf24', color: '#0f172a', padding: '20px', borderRadius: '8px', cursor: 'pointer', transition: 'transform 0.2s', boxShadow: '0 4px 12px rgba(251, 191, 36, 0.2)' }}
-                        onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-3px)'}
-                        onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
-                    >
-                        <div style={{ fontSize: '20px', marginBottom: '10px' }}>🚚</div>
-                        <div style={{ fontWeight: 'bold', fontSize: '16px', marginBottom: '5px' }}>Stock en Tránsito</div>
-                        <div style={{ fontSize: '12px', opacity: '0.8' }}>Auditoría y recepción de lotes</div>
-                    </div>
+                    {/* Ficha 3: Stock en Tránsito */}
+                    {tienePermiso('/transito') && (
+                        <div 
+                            onClick={() => navigate('/transito')}
+                            className="dashboard-tile tile-transito"
+                        >
+                            <div className="dashboard-tile-icono">🚚</div>
+                            <div className="dashboard-tile-titulo">Stock en Tránsito</div>
+                            <div className="dashboard-tile-descripcion">Auditoría y recepción de lotes</div>
+                        </div>
+                    )}
 
-                    {/* Ficha 4: Recursos Humanos y Planilla */}
-                    <div 
-                        onClick={() => navigate('/rrhh')}
-                        style={{ background: '#2dd4bf', color: '#0f172a', padding: '20px', borderRadius: '8px', cursor: 'pointer', transition: 'transform 0.2s', boxShadow: '0 4px 12px rgba(45, 212, 191, 0.2)' }}
-                        onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-3px)'}
-                        onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
-                    >
-                        <div style={{ fontSize: '20px', marginBottom: '10px' }}>👥</div>
-                        <div style={{ fontWeight: 'bold', fontSize: '16px', marginBottom: '5px' }}>Recursos Humanos</div>
-                        <div style={{ fontSize: '12px', opacity: '0.8' }}>Gestión de personal y nómina activa</div>
-                    </div>
+                    {/* Ficha 4: Recursos Humanos */}
+                    {tienePermiso('/rrhh') && (
+                        <div 
+                            onClick={() => navigate('/rrhh')}
+                            className="dashboard-tile tile-rrhh"
+                        >
+                            <div className="dashboard-tile-icono">👥</div>
+                            <div className="dashboard-tile-titulo">Recursos Humanos</div>
+                            <div className="dashboard-tile-descripcion">Gestión de personal y nómina activa</div>
+                        </div>
+                    )}
 
                     {/* Ficha 5: Call Center y Pedidos */}
-                    <div 
-                        onClick={() => navigate('/call-center')}
-                        style={{ background: '#34d399', color: '#0f172a', padding: '20px', borderRadius: '8px', cursor: 'pointer', transition: 'transform 0.2s', boxShadow: '0 4px 12px rgba(52, 211, 153, 0.2)' }}
-                        onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-3px)'}
-                        onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
-                    >
-                        <div style={{ fontSize: '20px', marginBottom: '10px' }}>🎧</div>
-                        <div style={{ fontWeight: 'bold', fontSize: '16px', marginBottom: '5px' }}>Call Center y Pedidos</div>
-                        <div style={{ fontSize: '12px', opacity: '0.8' }}>Toma de órdenes y asignación de despacho</div>
-                    </div>
+                    {tienePermiso('/call-center') && (
+                        <div 
+                            onClick={() => navigate('/call-center')}
+                            className="dashboard-tile tile-call-center"
+                        >
+                            <div className="dashboard-tile-icono">🎧</div>
+                            <div className="dashboard-tile-titulo">Call Center y Pedidos</div>
+                            <div className="dashboard-tile-descripcion">Toma de órdenes y asignación de despacho</div>
+                        </div>
+                    )}
 
                     {/* Ficha 6: Logística Delivery */}
-                    <div 
-                        onClick={() => navigate('/delivery')}
-                        style={{ background: '#a78bfa', color: '#0f172a', padding: '20px', borderRadius: '8px', cursor: 'pointer', transition: 'transform 0.2s', boxShadow: '0 4px 12px rgba(167, 139, 250, 0.2)' }}
-                        onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-3px)'}
-                        onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
-                    >
-                        <div style={{ fontSize: '20px', marginBottom: '10px' }}>🛵</div>
-                        <div style={{ fontWeight: 'bold', fontSize: '16px', marginBottom: '5px' }}>Logística Delivery</div>
-                        <div style={{ fontSize: '12px', opacity: '0.8' }}>Monitor de entregas y última milla</div>
-                    </div>
+                    {tienePermiso('/delivery') && (
+                        <div 
+                            onClick={() => navigate('/delivery')}
+                            className="dashboard-tile tile-delivery"
+                        >
+                            <div className="dashboard-tile-icono">🛵</div>
+                            <div className="dashboard-tile-titulo">Logística Delivery</div>
+                            <div className="dashboard-tile-descripcion">Monitor de entregas y última milla</div>
+                        </div>
+                    )}
 
-                    {/* Ficha 7: Interlocutores Comerciales (BP) */}
-                    <div 
-                        onClick={() => navigate('/business-partner')}
-                        style={{ background: '#818cf8', color: '#0f172a', padding: '20px', borderRadius: '8px', cursor: 'pointer', transition: 'transform 0.2s', boxShadow: '0 4px 12px rgba(129, 140, 248, 0.2)' }}
-                        onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-3px)'}
-                        onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
-                    >
-                        <div style={{ fontSize: '20px', marginBottom: '10px' }}>🏢</div>
-                        <div style={{ fontWeight: 'bold', fontSize: '16px', marginBottom: '5px' }}>Interlocutores (BP)</div>
-                        <div style={{ fontSize: '12px', opacity: '0.8' }}>Gestión de BPs, Clientes y Organizaciones</div>
-                    </div>
+                    {/* Ficha 7: Sucursales */}
+                    {tienePermiso('/sucursales') && (
+                        <div 
+                            onClick={() => navigate('/sucursales')}
+                            className="dashboard-tile tile-sucursales"
+                        >
+                            <div className="dashboard-tile-icono">🏢</div>
+                            <div className="dashboard-tile-titulo">Sucursales</div>
+                            <div className="dashboard-tile-descripcion">Gestión de Sucursales</div>
+                        </div>
+                    )}
 
                     {/* Ficha 8: Activos Fijos */}
-                    <div 
-                        onClick={() => navigate('/activos-fijos')}
-                        style={{ background: '#facc15', color: '#0f172a', padding: '20px', borderRadius: '8px', cursor: 'pointer', transition: 'transform 0.2s', boxShadow: '0 4px 12px rgba(250, 204, 21, 0.2)' }}
-                        onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-3px)'}
-                        onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
-                    >
-                        <div style={{ fontSize: '20px', marginBottom: '10px' }}>🖨️</div>
-                        <div style={{ fontWeight: 'bold', fontSize: '16px', marginBottom: '5px' }}>Activos Fijos</div>
-                        <div style={{ fontSize: '12px', opacity: '0.8' }}>Auditoría de patrimonio y equipamiento</div>
-                    </div>
+                    {tienePermiso('/activos-fijos') && (
+                        <div 
+                            onClick={() => navigate('/activos-fijos')}
+                            className="dashboard-tile tile-activos-fijos"
+                        >
+                            <div className="dashboard-tile-icono">🖨️</div>
+                            <div className="dashboard-tile-titulo">Activos Fijos</div>
+                            <div className="dashboard-tile-descripcion">Auditoría de patrimonio y equipamiento</div>
+                        </div>
+                    )}
 
                      {/* Ficha 9: Auditoria */}
-                    <div 
-                        onClick={() => navigate('/auditoria')}
-                        style={{ background: '#facc15', color: '#0f172a', padding: '20px', borderRadius: '8px', cursor: 'pointer', transition: 'transform 0.2s', boxShadow: '0 4px 12px rgba(250, 204, 21, 0.2)' }}
-                        onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-3px)'}
-                        onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
-                    >
-                        <div style={{ fontSize: '20px', marginBottom: '10px' }}>🖨️</div>
-                        <div style={{ fontWeight: 'bold', fontSize: '16px', marginBottom: '5px' }}>Auditoria</div>
-                        <div style={{ fontSize: '12px', opacity: '0.8' }}>Auditoría de patrimonio y equipamiento</div>
-                    </div>
+                     {tienePermiso('/auditoria') && (
+                        <div 
+                            onClick={() => navigate('/auditoria')}
+                            className="dashboard-tile tile-auditoria"
+                        >
+                            <div className="dashboard-tile-icono">📈</div>
+                            <div className="dashboard-tile-titulo">Auditoria</div>
+                            <div className="dashboard-tile-descripcion">Auditoría Financiera y Gerencial</div>
+                        </div>
+                    )}
+
+                    {/* Ficha 10: Usuarios del sistema */}
+                    {tienePermiso('/usuarios') && (
+                        <div 
+                            onClick={() => navigate('/usuarios')}
+                            className="dashboard-tile tile-usuarios"
+                        >
+                            <div className="dashboard-tile-icono">🔐</div>
+                            <div className="dashboard-tile-titulo">Usuarios del Sistema</div>
+                            <div className="dashboard-tile-descripcion">Gestion de usuarios y contraseñas</div>
+                        </div>
+                    )}
 
                 </div>
             </div>

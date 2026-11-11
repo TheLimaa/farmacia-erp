@@ -1,0 +1,45 @@
+.logistic-container {
+    padding: 20px 15px;
+    font-family: system-ui, -apple-system, sans-serif;
+    color: #fff;
+    box-sizing: border-box;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.logistic-title {
+    margin: 0 0 10px 0;
+    font-size: 22px;
+}
+
+.logistic-subtitle {
+    margin: 0;
+    color: #aaa;
+    font-size: 14px;
+}
+
+.logistic-table {
+    width: 100%;
+    min-width: 600px;
+    margin-top: 20px;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 13px;
+}
+
+.logistic-table th {
+    padding: 10px;
+    border: 1px solid #444;
+    background: #1c1c1e;
+    color: #888;
+}
+
+.logistic-table td {
+    padding: 10px;
+    border: 1px solid #2a2a2c;
+}
+
+.logistic-estado-traslado {
+    color: cyan;
+    font-weight: bold;
+}

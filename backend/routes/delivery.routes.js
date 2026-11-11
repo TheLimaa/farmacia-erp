@@ -4,4 +4,5 @@ const { getPedidosEntrega } = require('../controllers/deliveryController');
 
 router.get('/', getPedidosEntrega);
 
+
 module.exports = router;

@@ -1,34 +1,40 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Cargando from '../components/Cargando'; // <--- Importamos la plantilla de carga
 
 const StockReport = () => {
     const navigate = useNavigate();
-    // ESTADOS
     const [filtros, setFiltros] = useState({ id_sucursal: '', id_medicamento: '' });
     const [catalogoSucursales, setCatalogoSucursales] = useState([]);
     const [catalogoMedicamentos, setCatalogoMedicamentos] = useState([]);
     const [showSucursalHelp, setShowSucursalHelp] = useState(false);
     const [showMaterialHelp, setShowMaterialHelp] = useState(false);
+    const [cargando, setCargando] = useState(true); // <--- Estado de carga añadido
     
-    // NUEVOS ESTADOS PARA CONTROLAR LA VISTA
-    const [vistaResultados, setVistaResultados] = useState(false); // false = filtros, true = tabla
+    const [vistaResultados, setVistaResultados] = useState(false);
     const [inventarioGeneral, setInventarioGeneral] = useState([]);
     
     const sucursalRef = useRef(null);
     const materialRef = useRef(null);
 
-    // Cargar catálogos
     useEffect(() => {
         const fetchCatalogos = async () => {
-            try {
-                const resMed = await fetch('http://localhost:3000/api/inventario/medicamentos');
-                const dataMed = await resMed.json();
-                if (dataMed.success) setCatalogoMedicamentos(dataMed.data);
+            const tiempoMinimo = new Promise(resolve => setTimeout(resolve, 1000));
 
-                setCatalogoSucursales([
-                   
+            try {
+                const [resMed, resSuc] = await Promise.all([
+                    fetch('http://localhost:3000/api/inventario/medicamentos').then(res => res.json()).catch(() => ({ success: false })),
+                    fetch('http://localhost:3000/api/sucursales').then(res => res.json()).catch(() => ({ success: false })),
+                    tiempoMinimo
                 ]);
-            } catch (error) { console.error(error); }
+
+                if (resMed.success) setCatalogoMedicamentos(resMed.data);
+                if (resSuc.success) setCatalogoSucursales(resSuc.data);
+            } catch (error) { 
+                console.error(error); 
+            } finally {
+                setCargando(false);
+            }
         };
         fetchCatalogos();
 
@@ -40,10 +46,20 @@ const StockReport = () => {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    const sucursalesFiltradas = catalogoSucursales.filter(s => s.ID_SUCURSAL.toString().includes(filtros.id_sucursal) || s.NOMBRE_UBICACION.toLowerCase().includes(filtros.id_sucursal.toLowerCase()));
-    const medicamentosFiltrados = catalogoMedicamentos.filter(m => m.ID_MEDICAMENTO.toString().includes(filtros.id_medicamento) || m.NOMBRE_COMERCIAL.toLowerCase().includes(filtros.id_medicamento.toLowerCase()));
+    const sucursalesFiltradas = catalogoSucursales.filter(s => {
+        const query = (filtros.id_sucursal || '').toLowerCase();
+        const id = (s.ID_SUCURSAL || s.id_sucursal || '').toString();
+        const nombre = (s.NOMBRE_UBICACION || s.nombre_ubicacion || '').toLowerCase();
+        return id.includes(query) || nombre.includes(query);
+    });
 
-    // EJECUTAR BÚSQUEDA
+    const medicamentosFiltrados = catalogoMedicamentos.filter(m => {
+        const query = (filtros.id_medicamento || '').toLowerCase();
+        const id = (m.ID_MEDICAMENTO || m.id_medicamento || '').toString();
+        const nombre = (m.NOMBRE_COMERCIAL || m.nombre_comercial || '').toLowerCase();
+        return id.includes(query) || nombre.includes(query);
+    });
+
     const buscarInventario = async (e) => {
         if (e) e.preventDefault();
         try {
@@ -55,57 +71,70 @@ const StockReport = () => {
             const data = await res.json();
             
             if (data.success) {
-                setInventarioGeneral(data.data); // Guardamos los datos
-                setVistaResultados(true); // Cambiamos a la vista de tabla
+                setInventarioGeneral(data.data);
+                setVistaResultados(true);
             }
         } catch (error) { console.error(error); }
     };
 
+    // Si está cargando los catálogos iniciales, mostramos el componente de carga
+    if (cargando) {
+        return <Cargando mensaje="Cargando..." />;
+    }
+
     return (
-        <div style={{ padding: '40px 20px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', maxWidth: '1000px', margin: '0 auto 30px auto' }}>
-                <button onClick={() => navigate('/dashboard')} style={{ background: '#333', color: '#fff', border: '1px solid #555', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
+        <div className="stock-report-container">
+            <div className="stock-report-header">
+                <button onClick={() => navigate('/dashboard')} className="btn-regresar-stock">
                     ← Regresar al Dashboard
                 </button>
-                <div style={{ textAlign: 'center', flex: 1 }}>
-                    <h2 style={{ fontSize: '22px', margin: '0 0 8px 0', color: '#fff', fontWeight: '500' }}>Visualizar Stocks en Almacén</h2>
-                    <p style={{ color: '#666', margin: 0, fontSize: '14px' }}>Reporte consolidado de inventario por centro y material.</p>
+                <div className="stock-report-title-wrapper">
+                    <h2 className="stock-report-main-title">Visualizar Stocks en Almacén</h2>
+                    <p className="stock-report-subtitle">Reporte consolidado de inventario por centro y medicamento.</p>
                 </div>
                 <div style={{ width: '150px' }}></div>
             </div>
 
-            {/* VISTA 1: PANTALLA DE SELECCIÓN */}
             {!vistaResultados && (
-                <div style={{ background: '#1c1c1e', padding: '30px', borderRadius: '8px', border: '1px solid #2a2a2c', maxWidth: '1000px', margin: '0 auto' }}>
-                    <h3 style={{ textAlign: 'center', color: '#555', margin: '0 0 25px 0', fontSize: '16px', fontWeight: 'bold' }}>Selecciones de Base de Datos</h3>
+                <div className="stock-filter-card">
+                    <h3 className="stock-filter-section-title">Selecciones de Base de Datos</h3>
 
-                    <form onSubmit={buscarInventario} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        <div style={{ display: 'flex', width: '100%', maxWidth: '900px' }}>
+                    <form onSubmit={buscarInventario} className="stock-filter-form">
+                        <div className="stock-filter-fields-row">
                             {/* Input Centro */}
-                            <div ref={sucursalRef} style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' }}>
-                                <label style={{ color: '#777', fontSize: '12px', marginBottom: '8px', textAlign: 'center' }}>Centro (ID Sucursal):</label>
+                            <div ref={sucursalRef} className="stock-input-group">
+                                <label className="stock-input-label">Centro (ID Sucursal):</label>
                                 <input
                                     type="text"
                                     placeholder="Ej. 1 o Miraflores"
                                     value={filtros.id_sucursal}
                                     onFocus={() => setShowSucursalHelp(true)}
                                     onChange={e => { setFiltros({...filtros, id_sucursal: e.target.value}); setShowSucursalHelp(true); }}
-                                    style={{ background: '#333', color: '#fff', border: '1px solid #444', borderRight: 'none', padding: '12px 15px', borderRadius: '4px 0 0 4px', outline: 'none' }}
+                                    className="stock-input-field"
                                 />
                                 {showSucursalHelp && (
-                                    <div style={{ position: 'absolute', top: '100%', left: 0, width: '150%', background: '#252528', border: '1px solid #444', borderRadius: '4px', zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.5)', marginTop: '4px', maxHeight: '200px', overflowY: 'auto' }}>
-                                        <div style={{ padding: '8px 12px', borderBottom: '1px solid #333', fontWeight: 'bold', fontSize: '13px', color: '#fff' }}>Resultados del proceso de búsqueda</div>
-                                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', color: '#ddd' }}>
-                                            <thead><tr style={{ textAlign: 'left', color: '#888' }}><th style={{ padding: '8px 12px' }}>Ce.</th><th style={{ padding: '8px 12px' }}>Nombre</th></tr></thead>
+                                    <div className="stock-dropdown-help">
+                                        <div className="stock-dropdown-header-title">Resultados del proceso de búsqueda</div>
+                                        <table className="stock-dropdown-table">
+                                            <thead>
+                                                <tr>
+                                                    <th className="stock-dropdown-th">Ce.</th>
+                                                    <th className="stock-dropdown-th">Nombre</th>
+                                                </tr>
+                                            </thead>
                                             <tbody>
-                                                {sucursalesFiltradas.map(s => (
-                                                    <tr key={s.ID_SUCURSAL} style={{ cursor: 'pointer', borderTop: '1px solid #333' }}
-                                                        onClick={() => { setFiltros({...filtros, id_sucursal: s.ID_SUCURSAL.toString()}); setShowSucursalHelp(false); }}
-                                                        onMouseEnter={(e) => e.currentTarget.style.background = '#3a3a3d'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                                                    >
-                                                        <td style={{ padding: '8px 12px', fontWeight: 'bold', color: '#fff' }}>{s.ID_SUCURSAL}</td><td style={{ padding: '8px 12px' }}>{s.NOMBRE_UBICACION}</td>
-                                                    </tr>
-                                                ))}
+                                                {sucursalesFiltradas.map(s => {
+                                                    const id = s.ID_SUCURSAL || s.id_sucursal;
+                                                    const nombre = s.NOMBRE_UBICACION || s.nombre_ubicacion;
+                                                    return (
+                                                        <tr key={id} className="stock-dropdown-tr"
+                                                            onClick={() => { setFiltros({...filtros, id_sucursal: id.toString()}); setShowSucursalHelp(false); }}
+                                                        >
+                                                            <td className="stock-dropdown-td-id-sucursal">{id}</td>
+                                                            <td className="stock-dropdown-td-text">{nombre}</td>
+                                                        </tr>
+                                                    );
+                                                })}
                                             </tbody>
                                         </table>
                                     </div>
@@ -113,79 +142,88 @@ const StockReport = () => {
                             </div>
                             
                             {/* Input Material */}
-                            <div ref={materialRef} style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' }}>
-                                <label style={{ color: '#777', fontSize: '12px', marginBottom: '8px', textAlign: 'center' }}>Material (ID Producto):</label>
+                            <div ref={materialRef} className="stock-input-group">
+                                <label className="stock-input-label">Medicamento (ID Producto):</label>
                                 <input
                                     type="text"
                                     placeholder="Ej. 3 o Paracetamol"
                                     value={filtros.id_medicamento}
                                     onFocus={() => setShowMaterialHelp(true)}
                                     onChange={e => { setFiltros({...filtros, id_medicamento: e.target.value}); setShowMaterialHelp(true); }}
-                                    style={{ background: '#333', color: '#fff', border: '1px solid #444', borderRight: 'none', padding: '12px 15px', outline: 'none' }}
+                                    className="stock-input-field-middle"
                                 />
                                 {showMaterialHelp && (
-                                    <div style={{ position: 'absolute', top: '100%', left: 0, width: '150%', background: '#252528', border: '1px solid #444', borderRadius: '4px', zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.5)', marginTop: '4px', maxHeight: '200px', overflowY: 'auto' }}>
-                                        <div style={{ padding: '8px 12px', borderBottom: '1px solid #333', fontWeight: 'bold', fontSize: '13px', color: '#fff' }}>Resultados del proceso de búsqueda</div>
-                                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', color: '#ddd' }}>
-                                            <thead><tr style={{ textAlign: 'left', color: '#888' }}><th style={{ padding: '8px 12px' }}>Material</th><th style={{ padding: '8px 12px' }}>Texto breve de material</th></tr></thead>
+                                    <div className="stock-dropdown-help">
+                                        <div className="stock-dropdown-header-title">Resultados del proceso de búsqueda</div>
+                                        <table className="stock-dropdown-table">
+                                            <thead>
+                                                <tr>
+                                                    <th className="stock-dropdown-th">Material</th>
+                                                    <th className="stock-dropdown-th">Texto breve de producto</th>
+                                                </tr>
+                                            </thead>
                                             <tbody>
-                                                {medicamentosFiltrados.map(m => (
-                                                    <tr key={m.ID_MEDICAMENTO} style={{ cursor: 'pointer', borderTop: '1px solid #333' }}
-                                                        onClick={() => { setFiltros({...filtros, id_medicamento: m.ID_MEDICAMENTO.toString()}); setShowMaterialHelp(false); }}
-                                                        onMouseEnter={(e) => e.currentTarget.style.background = '#3a3a3d'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                                                    >
-                                                        <td style={{ padding: '8px 12px', fontWeight: 'bold', color: '#fff' }}>{m.ID_MEDICAMENTO}</td><td style={{ padding: '8px 12px' }}>{m.NOMBRE_COMERCIAL}</td>
-                                                    </tr>
-                                                ))}
+                                                {medicamentosFiltrados.map(m => {
+                                                    const id = m.ID_MEDICAMENTO || m.id_medicamento;
+                                                    const nombre = m.NOMBRE_COMERCIAL || m.nombre_comercial;
+                                                    return (
+                                                        <tr key={id} className="stock-dropdown-tr"
+                                                            onClick={() => { setFiltros({...filtros, id_medicamento: id.toString()}); setShowMaterialHelp(false); }}
+                                                        >
+                                                            <td className="stock-dropdown-td-id-material">{id}</td>
+                                                            <td className="stock-dropdown-td-text">{nombre}</td>
+                                                        </tr>
+                                                    );
+                                                })}
                                             </tbody>
                                         </table>
                                     </div>
                                 )}
                             </div>
 
-                            {/* Botones */}
-                            <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-                                <button type="submit" style={{ background: '#0055ff', color: '#fff', border: 'none', padding: '13px 25px', fontWeight: 'bold', cursor: 'pointer', outline: 'none' }}>Ejecutar Búsqueda</button>
-                                <button type="button" onClick={() => setFiltros({id_sucursal:'', id_medicamento:''})} style={{ background: '#4a4a4a', color: '#ddd', border: 'none', padding: '13px 20px', borderRadius: '0 4px 4px 0', cursor: 'pointer', outline: 'none' }}>Limpiar</button>
+                            <div className="stock-buttons-action-wrapper">
+                                <button type="submit" className="btn-ejecutar-busqueda">Ejecutar Búsqueda</button>
+                                <button type="button" onClick={() => setFiltros({id_sucursal:'', id_medicamento:''})} className="btn-limpiar-filtros">Limpiar</button>
                             </div>
                         </div>
                     </form>
                 </div>
             )}
 
-            {/* VISTA 2: RESULTADOS DEL REPORTE */}
             {vistaResultados && (
-                <div style={{ background: '#1c1c1e', padding: '30px', borderRadius: '8px', border: '1px solid #2a2a2c', maxWidth: '1000px', margin: '0 auto' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
-                        <h3 style={{ color: '#555', margin: 0, fontSize: '16px', fontWeight: 'bold' }}>Resultados del Reporte</h3>
-                        <button onClick={() => setVistaResultados(false)} style={{ background: '#333', color: '#fff', border: '1px solid #555', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
+                <div className="stock-results-card">
+                    <div className="stock-results-header-bar">
+                        <h3 className="stock-results-title">Resultados del Reporte</h3>
+                        <button onClick={() => setVistaResultados(false)} className="btn-volver-selecciones">
                             ← Volver a Selecciones
                         </button>
                     </div>
 
-                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+                    <table className="stock-tabla-resultados">
                         <thead>
-                            <tr style={{ borderBottom: '1px solid #333' }}>
-                                <th style={{ padding: '12px', color: '#555', fontWeight: 'bold' }}>ID Sucursal</th>
-                                <th style={{ padding: '12px', color: '#555', fontWeight: 'bold' }}>Nombre Sucursal</th>
-                                <th style={{ padding: '12px', color: '#555', fontWeight: 'bold' }}>ID Material</th>
-                                <th style={{ padding: '12px', color: '#555', fontWeight: 'bold' }}>Descripción del Material</th>
-                                <th style={{ padding: '12px', color: '#555', fontWeight: 'bold', textAlign: 'right' }}>Total Cajas Físicas</th>
+                            <tr>
+                                <th>ID Sucursal</th>
+                                <th>Nombre Sucursal</th>
+                                <th>ID Material</th>
+                                <th>Descripción del Material</th>
+                                <th className="align-right">Total Cajas Físicas</th>
                             </tr>
                         </thead>
                         <tbody>
                             {inventarioGeneral.length > 0 ? (
                                 inventarioGeneral.map((inv, index) => (
-                                    <tr key={index} style={{ borderBottom: '1px solid #2a2a2c' }}>
-                                        <td style={{ padding: '16px 12px', color: '#ffaa00' }}>{inv.ID_SUCURSAL}</td>
-                                        <td style={{ padding: '16px 12px', color: '#666' }}>{inv.SUCURSAL}</td>
-                                        <td style={{ padding: '16px 12px', color: '#00ffcc' }}>{inv.ID_MEDICAMENTO}</td>
-                                        <td style={{ padding: '16px 12px', color: '#666' }}>{inv.MEDICAMENTO}</td>
-                                        <td style={{ padding: '16px 12px', color: '#fff', fontWeight: 'bold', textAlign: 'right', fontSize: '14px' }}>{inv.TOTAL_CAJAS}</td>
+                                    <tr key={index}>
+                                        <td className="td-res-sucursal-id">{inv.ID_SUCURSAL || inv.id_sucursal}</td>
+                                        <td className="td-res-sucursal-nombre">{inv.SUCURSAL || inv.sucursal}</td>
+                                        <td className="td-res-material-id">{inv.ID_MEDICAMENTO || inv.id_medicamento}</td>
+                                        <td className="td-res-material-desc">{inv.MEDICAMENTO || inv.medicamento}</td>
+                                        <td className="align-right td-res-total-cajas">{inv.TOTAL_CAJAS || inv.total_cajas}</td>
                                     </tr>
                                 ))
                             ) : (
-                                <tr><td colSpan="5" style={{ padding: '30px', textAlign: 'center', color: '#555' }}>No se encontraron registros con los criterios seleccionados.</td></tr>
+                                <tr>
+                                    <td colSpan="5" className="stock-tabla-vacia">No se encontraron registros con los criterios seleccionados.</td>
+                                </tr>
                             )}
                         </tbody>
                     </table>

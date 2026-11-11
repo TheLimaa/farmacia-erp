@@ -1,53 +1,49 @@
-const oracledb = require('oracledb');
+const db = require('../config/db'); // Importa tu conexión a PostgreSQL
 
 const obtenerBPs = async (req, res) => {
-    let connection;
     try {
         const { q } = req.query;
-        connection = await oracledb.getConnection();
         
         let sql = `SELECT id_cliente, nit, nombre_completo, telefono_contacto FROM cliente`;
-        let binds = [];
+        let params = [];
         
         if (q) {
-            sql += ` WHERE LOWER(nit) LIKE :q OR LOWER(nombre_completo) LIKE :q`;
-            binds = { q: `%${q.toLowerCase()}%` };
+            // En PostgreSQL usamos ILIKE para hacer búsqueda insensible a mayúsculas/minúsculas de forma más limpia,
+            // o LOWER() con parámetros posicionales ($1)
+            sql += ` WHERE LOWER(nit) LIKE $1 OR LOWER(nombre_completo) LIKE $1`;
+            params = [`%${q.toLowerCase()}%`];
         }
         
         sql += ` ORDER BY id_cliente DESC`;
         
-        const result = await connection.execute(sql, binds, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+        const result = await db.query(sql, params);
         res.status(200).json({ success: true, data: result.rows });
     } catch (error) {
         console.error('Error al obtener BPs:', error);
         res.status(500).json({ success: false, message: 'Error interno del servidor' });
-    } finally {
-        if (connection) await connection.close();
     }
 };
 
 const crearBP = async (req, res) => {
-    let connection;
     try {
         const { nit, nombre_completo, telefono_contacto } = req.body;
-        connection = await oracledb.getConnection();
         
         const sql = `
             INSERT INTO cliente (nit, nombre_completo, telefono_contacto) 
-            VALUES (:nit, :nombre_completo, :telefono_contacto)
+            VALUES ($1, $2, $3)
         `;
         
-        await connection.execute(sql, [nit, nombre_completo, telefono_contacto], { autoCommit: true });
+        await db.query(sql, [nit, nombre_completo, telefono_contacto]);
         res.status(200).json({ success: true, message: 'Interlocutor Comercial (BP) creado exitosamente.' });
     } catch (error) {
         console.error('Error al crear BP:', error);
-        // Error 1 (Unique Constraint) si el NIT ya existe
-        if (error.errorNum === 1) {
+        
+        // En PostgreSQL, el código '23505' corresponde a violación de restricción única (Unique Violation / NIT duplicado)
+        if (error.code === '23505') {
             return res.status(400).json({ success: false, message: 'El NIT ingresado ya está registrado.' });
         }
+        
         res.status(500).json({ success: false, message: 'Error interno del servidor' });
-    } finally {
-        if (connection) await connection.close();
     }
 };
 

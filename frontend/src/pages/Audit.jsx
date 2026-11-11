@@ -1,117 +1,246 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getFinancialSummary, getCashFlow } from '../services/auditService';
+import Cargando from '../components/Cargando'; // <--- Importamos la plantilla de carga
 
 const Audit = () => {
     const navigate = useNavigate();
+    
+    // --- LÓGICA DE ROLES CORREGIDA (Leyendo localStorage igual que el Dashboard) ---
+    const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
+    const rolUsuario = (user.rol || user.ROL || '').toUpperCase();
+    const esAdmin = rolUsuario === 'ADMINISTRADOR';
+
+    const [financialsOriginal, setFinancialsOriginal] = useState([]);
+    const [cashFlowOriginal, setCashFlowOriginal] = useState([]);
+    
+    // Estados para los datos filtrados
     const [financials, setFinancials] = useState([]);
     const [cashFlow, setCashFlow] = useState([]);
+    
     const [loading, setLoading] = useState(true);
+    const [sucursalSeleccionada, setSucursalSeleccionada] = useState('');
+    const [gerenteSucursalNombre, setGerenteSucursalNombre] = useState('');
 
     useEffect(() => {
-        Promise.all([getFinancialSummary(), getCashFlow()]).then(([finData, flowData]) => {
-            setFinancials(finData);
-            setCashFlow(flowData);
-            setLoading(false);
-        });
-    }, []);
+        const cargarDatosAuditoria = async () => {
+            // Creamos una promesa para el tiempo mínimo de carga (2 segundos = 2000ms)
+            const tiempoMinimo = new Promise(resolve => setTimeout(resolve, 1000));
 
+            try {
+                // Ejecutamos las peticiones de servicios y el temporizador en paralelo
+                const [finData, flowData] = await Promise.all([
+                    getFinancialSummary(),
+                    getCashFlow(),
+                    tiempoMinimo
+                ]);
+
+                setFinancialsOriginal(finData);
+                setCashFlowOriginal(flowData);
+
+                if (!esAdmin) {
+                    // Si es gerente, buscamos automáticamente su sucursal vinculada
+                    try {
+                        const res = await fetch('http://localhost:3000/api/usuarios');
+                        const data = await res.json();
+                        if (data.success) {
+                            const usuarioBuscado = (user.usuario || user.username || user.nombre || '').toString().toLowerCase();
+                            const currentUser = data.data.find(u => {
+                                const dbUser = (u.USERNAME || u.username || u.USUARIO || u.nombre_usuario || '').toString().toLowerCase();
+                                return dbUser === usuarioBuscado;
+                            });
+                            
+                            if (currentUser) {
+                                const nombreSuc = currentUser.SUCURSAL || currentUser.sucursal || currentUser.NOMBRE_UBICACION || '';
+                                setGerenteSucursalNombre(nombreSuc);
+                                setSucursalSeleccionada(nombreSuc); // Forzar selección del gerente a su tienda
+                            }
+                        }
+                    } catch (error) {
+                        console.error("Error al obtener sucursal del gerente:", error);
+                    }
+                }
+            } catch (error) {
+                console.error("Error al cargar datos de auditoría:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        cargarDatosAuditoria();
+    }, [esAdmin]);
+
+    // Efecto para aplicar el filtro cada vez que cambia la sucursal seleccionada o los datos originales
+    useEffect(() => {
+        if (!esAdmin && gerenteSucursalNombre) {
+            // Restricción estricta para Gerentes: Forzar siempre su sucursal
+            const filteredFinancials = financialsOriginal.filter(
+                (item) => item.NOMBRE_UBICACION === gerenteSucursalNombre
+            );
+            setFinancials(filteredFinancials);
+
+            const filteredCashFlow = cashFlowOriginal.filter(
+                (mov) => mov.SUCURSAL === gerenteSucursalNombre
+            );
+            setCashFlow(filteredCashFlow);
+        } else if (esAdmin) {
+            // Lógica para Administradores
+            if (sucursalSeleccionada === '') {
+                setFinancials(financialsOriginal);
+                setCashFlow(cashFlowOriginal);
+            } else {
+                const filteredFinancials = financialsOriginal.filter(
+                    (item) => item.NOMBRE_UBICACION === sucursalSeleccionada
+                );
+                setFinancials(filteredFinancials);
+
+                const filteredCashFlow = cashFlowOriginal.filter(
+                    (mov) => mov.SUCURSAL === sucursalSeleccionada
+                );
+                setCashFlow(filteredCashFlow);
+            }
+        }
+    }, [sucursalSeleccionada, financialsOriginal, cashFlowOriginal, esAdmin, gerenteSucursalNombre]);
+
+    // Extraer lista de sucursales únicas para el dropdown (Solo Admin)
+    const sucursalesUnicas = [...new Set(financialsOriginal.map(item => item.NOMBRE_UBICACION))];
+
+    // Cálculos dinámicos basados en la información filtrada
     const totalCaja = financials.reduce((sum, item) => sum + (item.SALDO_CAJA || 0), 0);
     const totalPlanilla = financials.reduce((sum, item) => sum + (item.GASTO_PLANILLA || 0), 0);
     const totalActivos = financials.reduce((sum, item) => sum + (item.VALOR_ACTIVOS_FIJOS || 0), 0);
 
+    const tituloSucursalActiva = esAdmin ? sucursalSeleccionada : gerenteSucursalNombre;
+
+    // Si está cargando, retornamos la plantilla reutilizable con el mensaje adecuado
+    if (loading) {
+        return <Cargando mensaje="Cargando..." />;
+    }
+
     return (
-        <div style={{ padding: '40px 20px', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#fff' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', maxWidth: '1200px', margin: '0 auto 30px auto' }}>
-                <button onClick={() => navigate('/dashboard')} style={{ background: '#333', color: '#fff', border: '1px solid #555', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer' }}>
+        <div className="audit-container">
+            <div className="audit-header">
+                <button onClick={() => navigate('/dashboard')} className="btn-regresar">
                     ← Regresar al Dashboard
                 </button>
-                <div style={{ textAlign: 'center', flex: 1 }}>
-                    <h2 style={{ fontSize: '22px', margin: '0 0 8px 0', fontWeight: '500' }}>Auditoría Gerencial Financiera</h2>
+                <div className="audit-title-container">
+                    <h2>
+                        Auditoría Gerencial Financiera {!esAdmin && `- ${gerenteSucursalNombre}`}
+                    </h2>
                 </div>
                 <div style={{ width: '150px' }}></div>
             </div>
 
-            {loading ? (
-                <div style={{ textAlign: 'center', padding: '50px', color: '#888' }}>Cargando datos financieros...</div>
-            ) : (
-                <>
-                    <div style={{ display: 'flex', gap: '20px', maxWidth: '1200px', margin: '0 auto 30px auto' }}>
-                        <div style={{ flex: 1, background: '#1c1c1e', padding: '20px', borderRadius: '8px', borderLeft: '4px solid #34d399' }}>
-                            <div style={{ color: '#888', fontSize: '13px' }}>Total Efectivo en Cajas</div>
-                            <div style={{ fontSize: '24px', fontWeight: 'bold' }}>Q {totalCaja.toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
-                        </div>
-                        <div style={{ flex: 1, background: '#1c1c1e', padding: '20px', borderRadius: '8px', borderLeft: '4px solid #ef4444' }}>
-                            <div style={{ color: '#888', fontSize: '13px' }}>Obligaciones de Planilla</div>
-                            <div style={{ fontSize: '24px', fontWeight: 'bold' }}>Q {totalPlanilla.toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
-                        </div>
-                        <div style={{ flex: 1, background: '#1c1c1e', padding: '20px', borderRadius: '8px', borderLeft: '4px solid #38bdf8' }}>
-                            <div style={{ color: '#888', fontSize: '13px' }}>Valor de Activos Fijos</div>
-                            <div style={{ fontSize: '24px', fontWeight: 'bold' }}>Q {totalActivos.toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
+            <>
+                {/* SECCIÓN DEL FILTRO: SOLO SE MUESTRA SI ES ADMINISTRADOR */}
+                {esAdmin && (
+                    <div className="audit-filter-card">
+                        <div className="filter-title">Filtrar Auditoría:</div>
+                        <div className="filter-group">
+                            <label>Sucursal:</label>
+                            <select 
+                                value={sucursalSeleccionada} 
+                                onChange={(e) => setSucursalSeleccionada(e.target.value)}
+                                className="select-sucursal"
+                            >
+                                <option value="">--- Todas las Sucursales (Consolidado) ---</option>
+                                {sucursalesUnicas.map((sucursal, index) => (
+                                    <option key={index} value={sucursal}>{sucursal}</option>
+                                ))}
+                            </select>
                         </div>
                     </div>
+                )}
 
-                    <div style={{ background: '#1c1c1e', padding: '25px', borderRadius: '8px', maxWidth: '1200px', margin: '0 auto 30px auto' }}>
-                        <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', color: '#aaa' }}>Saldos Actuales por Sucursal</h3>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+                {/* TARJETAS DE TOTALES */}
+                <div className="totales-grid">
+                    <div className="card-total caja">
+                        <div className="card-total-label">Total Efectivo en Caja{tituloSucursalActiva ? '' : 's'}</div>
+                        <div className="card-total-value">Q {totalCaja.toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
+                    </div>
+                    <div className="card-total planilla">
+                        <div className="card-total-label">Obligaciones de Planilla</div>
+                        <div className="card-total-value">Q {totalPlanilla.toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
+                    </div>
+                    <div className="card-total activos">
+                        <div className="card-total-label">Valor de Activos Fijos</div>
+                        <div className="card-total-value">Q {totalActivos.toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
+                    </div>
+                </div>
+
+                {/* TABLA DE SALDOS */}
+                <div className="audit-card-section">
+                    <h3 className="audit-section-title">
+                        {tituloSucursalActiva ? `Saldos Actuales: ${tituloSucursalActiva}` : 'Saldos Actuales por Sucursal'}
+                    </h3>
+                    {financials.length === 0 ? (
+                        <p className="audit-vacio-texto">No hay información financiera disponible para esta selección.</p>
+                    ) : (
+                        <table className="audit-table">
                             <thead>
-                                <tr style={{ borderBottom: '1px solid #333', color: '#888' }}>
-                                    <th style={{ padding: '12px' }}>Sucursal</th>
-                                    <th style={{ padding: '12px', textAlign: 'right' }}>Saldo en Caja (Q)</th>
-                                    <th style={{ padding: '12px', textAlign: 'right' }}>Gasto Planilla (Q)</th>
-                                    <th style={{ padding: '12px', textAlign: 'right' }}>Activos Fijos (Q)</th>
+                                <tr>
+                                    <th>Sucursal</th>
+                                    <th className="align-right">Saldo en Caja (Q)</th>
+                                    <th className="align-right">Gasto Planilla (Q)</th>
+                                    <th className="align-right">Activos Fijos (Q)</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {financials.map((item) => (
-                                    <tr key={item.ID_SUCURSAL} style={{ borderBottom: '1px solid #2a2a2c' }}>
-                                        <td style={{ padding: '15px 12px', color: '#ffaa00', fontWeight: 'bold' }}>{item.NOMBRE_UBICACION}</td>
-                                        <td style={{ padding: '15px 12px', textAlign: 'right', color: '#34d399' }}>Q {item.SALDO_CAJA.toLocaleString()}</td>
-                                        <td style={{ padding: '15px 12px', textAlign: 'right', color: '#ef4444' }}>Q {item.GASTO_PLANILLA.toLocaleString()}</td>
-                                        <td style={{ padding: '15px 12px', textAlign: 'right', color: '#38bdf8' }}>Q {item.VALOR_ACTIVOS_FIJOS.toLocaleString()}</td>
+                                    <tr key={item.ID_SUCURSAL}>
+                                        <td className="td-sucursal">{item.NOMBRE_UBICACION}</td>
+                                        <td className="align-right td-caja">Q {item.SALDO_CAJA.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+                                        <td className="align-right td-planilla">Q {item.GASTO_PLANILLA.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+                                        <td className="align-right td-activos">Q {item.VALOR_ACTIVOS_FIJOS.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
-                    </div>
+                    )}
+                </div>
 
-                    <div style={{ background: '#1c1c1e', padding: '25px', borderRadius: '8px', maxWidth: '1200px', margin: '0 auto' }}>
-                        <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', color: '#aaa' }}>Libro Mayor: Historial de Flujo de Efectivo</h3>
-                        {cashFlow.length === 0 ? (
-                            <p style={{ color: '#666' }}>No hay movimientos registrados en las cajas.</p>
-                        ) : (
-                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
-                                <thead>
-                                    <tr style={{ borderBottom: '1px solid #333', color: '#888' }}>
-                                        <th style={{ padding: '12px' }}>Fecha y Hora</th>
-                                        <th style={{ padding: '12px' }}>Sucursal</th>
-                                        <th style={{ padding: '12px' }}>Concepto</th>
-                                        <th style={{ padding: '12px' }}>Tipo</th>
-                                        <th style={{ padding: '12px', textAlign: 'right' }}>Monto (Q)</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {cashFlow.map((mov) => (
-                                        <tr key={mov.ID_MOVIMIENTO} style={{ borderBottom: '1px solid #2a2a2c' }}>
-                                            <td style={{ padding: '15px 12px', color: '#aaa' }}>{mov.FECHA_HORA}</td>
-                                            <td style={{ padding: '15px 12px', fontWeight: 'bold' }}>{mov.SUCURSAL}</td>
-                                            <td style={{ padding: '15px 12px' }}>{mov.CONCEPTO}</td>
-                                            <td style={{ padding: '15px 12px' }}>
-                                                <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '11px', background: mov.TIPO_MOVIMIENTO === 'INGRESO' ? 'rgba(52, 211, 153, 0.1)' : 'rgba(239, 68, 68, 0.1)', color: mov.TIPO_MOVIMIENTO === 'INGRESO' ? '#34d399' : '#ef4444' }}>
+                {/* TABLA DE FLUJO DE EFECTIVO */}
+                <div className="audit-card-section sin-margen-inferior">
+                    <h3 className="audit-section-title">
+                        Libro Mayor: Historial de Flujo de Efectivo {tituloSucursalActiva && `(${tituloSucursalActiva})`}
+                    </h3>
+                    {cashFlow.length === 0 ? (
+                        <p className="audit-vacio-texto">No hay movimientos registrados en {tituloSucursalActiva ? 'esta sucursal' : 'las cajas'}.</p>
+                    ) : (
+                        <table className="audit-table">
+                            <thead>
+                                <tr>
+                                    <th>Fecha y Hora</th>
+                                    <th>Sucursal</th>
+                                    <th>Concepto</th>
+                                    <th>Tipo</th>
+                                    <th className="align-right">Monto (Q)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {cashFlow.map((mov) => {
+                                    const esIngreso = mov.TIPO_MOVIMIENTO === 'INGRESO';
+                                    return (
+                                        <tr key={mov.ID_MOVIMIENTO}>
+                                            <td className="td-fecha">{mov.FECHA_HORA}</td>
+                                            <td className="td-concepto" style={{ fontWeight: 'bold' }}>{mov.SUCURSAL}</td>
+                                            <td>{mov.CONCEPTO}</td>
+                                            <td>
+                                                <span className={`badge-movimiento ${esIngreso ? 'ingreso' : 'egreso'}`}>
                                                     {mov.TIPO_MOVIMIENTO}
                                                 </span>
                                             </td>
-                                            <td style={{ padding: '15px 12px', textAlign: 'right', fontWeight: 'bold', color: mov.TIPO_MOVIMIENTO === 'INGRESO' ? '#34d399' : '#ef4444' }}>
-                                                {mov.TIPO_MOVIMIENTO === 'INGRESO' ? '+' : '-'} Q {mov.MONTO.toLocaleString()}
+                                            <td className={`align-right ${esIngreso ? 'monto-ingreso' : 'monto-egreso'}`} style={{ fontWeight: 'bold' }}>
+                                                {esIngreso ? '+' : '-'} Q {mov.MONTO.toLocaleString('en-US', {minimumFractionDigits: 2})}
                                             </td>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        )}
-                    </div>
-                </>
-            )}
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
+            </>
         </div>
     );
 };

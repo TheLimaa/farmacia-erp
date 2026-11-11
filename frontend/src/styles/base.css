@@ -24,8 +24,10 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
 
-  @media (max-width: 1024px) {
+@media (max-width: 1024px) {
+  :root {
     font-size: 16px;
   }
 }
@@ -50,24 +52,28 @@
   }
 }
 
-body {
-  margin: 0;
-}
-
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
+*, *::before, *::after {
   box-sizing: border-box;
 }
 
-h1,
-h2 {
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+#root {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  text-align: left;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+h1, h2 {
   font-family: var(--heading);
   font-weight: 500;
   color: var(--text-h);
@@ -77,26 +83,33 @@ h1 {
   font-size: 56px;
   letter-spacing: -1.68px;
   margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
+}
+
+@media (max-width: 1024px) {
+  h1 {
+    font-size: 32px;
     margin: 20px 0;
   }
 }
+
 h2 {
   font-size: 24px;
   line-height: 118%;
   letter-spacing: -0.24px;
   margin: 0 0 8px;
-  @media (max-width: 1024px) {
+}
+
+@media (max-width: 1024px) {
+  h2 {
     font-size: 20px;
   }
 }
+
 p {
   margin: 0;
 }
 
-code,
-.counter {
+code, .counter {
   font-family: var(--mono);
   display: inline-flex;
   border-radius: 4px;
@@ -108,4 +121,60 @@ code {
   line-height: 135%;
   padding: 4px 8px;
   background: var(--code-bg);
+}
+
+
+h1, h2, h3, h4, h5, h6,
+.dashboard-topbar,
+.dashboard-topbar-title-wrapper,
+.dashboard-topbar-title,
+.dashboard-user-meta,
+.audit-header,
+.activos-header,
+.transit-report-header,
+.stock-report-header,
+.rrhh-header-bar,
+.sucursales-header-bar,
+.usuarios-header-bar,
+.repartidor-topbar {
+    cursor: default;
+    user-select: none;
+}
+
+
+/* 1. Desactivar el I-beam y la selección de texto por defecto en toda la aplicación */
+body, h1, h2, h3, h4, h5, h6, p, span, label, th, td, div {
+    cursor: default !important;
+    user-select: none !important; /* Vital para que el navegador no active la barra de texto */
+}
+
+/* 2. Devolver el cursor de mano (pointer) a elementos interactivos */
+button, 
+a, 
+select, 
+input[type="checkbox"], 
+input[type="radio"], 
+label[for], 
+[role="button"], 
+.dashboard-tile, 
+.transit-dropdown-item, 
+.sucursal-item,
+[class*="btn-"] {
+    cursor: pointer !important;
+}
+
+/* Asegurar que el texto dentro de los botones herede el puntero */
+button *, a * {
+    cursor: pointer !important;
+}
+
+/* 3. Permitir escritura y selección únicamente dentro de campos de entrada reales */
+input[type="text"], 
+input[type="number"], 
+input[type="password"], 
+input[type="email"], 
+input[type="search"], 
+textarea {
+    cursor: text !important;
+    user-select: text !important;
 }

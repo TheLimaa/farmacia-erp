@@ -1,41 +1,70 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Cargando from '../components/Cargando'; // <--- Importamos la plantilla de carga
 
 const TransitReport = () => {
     const navigate = useNavigate();
+    
+    // --- LÓGICA DE ROLES Y SUCURSAL ---
+    const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
+    const rolUsuario = (user.rol || user.ROL || '').toUpperCase();
+    const esAdmin = rolUsuario === 'ADMINISTRADOR';
+
     const [filtros, setFiltros] = useState({ id_sucursal: '', id_medicamento: '' });
     const [vistaResultados, setVistaResultados] = useState(false);
     const [stockTransito, setStockTransito] = useState([]);
+    const [cargando, setCargando] = useState(true); // <--- Estado de carga añadido
 
-    const [catalogoMedicamentos, setCatalogoMedicamentos] = useState([
-        
-    ]);
-    
-    const [catalogoSucursales] = useState([
-        
-    ]);
+    const [catalogoMedicamentos, setCatalogoMedicamentos] = useState([]);
+    const [catalogoSucursales, setCatalogoSucursales] = useState([]);
 
     const [showSucursalHelp, setShowSucursalHelp] = useState(false);
     const [showMaterialHelp, setShowMaterialHelp] = useState(false);
+    const [sucursalUsuarioNombre, setSucursalUsuarioNombre] = useState('');
 
     const sucursalRef = useRef(null);
     const materialRef = useRef(null);
 
     useEffect(() => {
-        const fetchCatalogo = async () => {
+        const fetchCatalogosYPermisos = async () => {
+            const tiempoMinimo = new Promise(resolve => setTimeout(resolve, 1000));
+
             try {
-                const resMed = await fetch('http://localhost:3000/api/inventario/medicamentos');
-                const dataMed = await resMed.json();
-                if (dataMed.success && dataMed.data && dataMed.data.length > 0) {
-                    const normalizados = dataMed.data.map(m => ({
-                        ID_MEDICAMENTO: m.ID_MEDICAMENTO || m.id_medicamento,
-                        NOMBRE_COMERCIAL: m.NOMBRE_COMERCIAL || m.nombre_comercial || m.NOMBRE || m.nombre
-                    }));
-                    setCatalogoMedicamentos(normalizados);
+                // Cargamos medicamentos, sucursales, permisos y los 2 segundos en paralelo
+                const [resMed, resSuc] = await Promise.all([
+                    fetch('http://localhost:3000/api/inventario/medicamentos').then(res => res.json()).catch(() => ({ success: false })),
+                    fetch('http://localhost:3000/api/sucursales').then(res => res.json()).catch(() => ({ success: false })),
+                    tiempoMinimo
+                ]);
+
+                if (resMed.success) setCatalogoMedicamentos(resMed.data);
+                
+                if (resSuc.success) {
+                    setCatalogoSucursales(resSuc.data);
+
+                    if (!esAdmin) {
+                        const resUser = await fetch('http://localhost:3000/api/usuarios').then(res => res.json()).catch(() => ({ success: false }));
+                        if (resUser.success) {
+                            const usuarioBuscado = (user.usuario || user.username || user.nombre || '').toString().toLowerCase();
+                            const currentUser = resUser.data.find(u => {
+                                const dbUser = (u.USERNAME || u.username || u.USUARIO || u.nombre_usuario || '').toString().toLowerCase();
+                                return dbUser === usuarioBuscado;
+                            });
+
+                            if (currentUser) {
+                                const nombreSuc = currentUser.SUCURSAL || currentUser.sucursal || currentUser.NOMBRE_UBICACION || '';
+                                setSucursalUsuarioNombre(nombreSuc);
+                            }
+                        }
+                    }
                 }
-            } catch (error) { console.error(error); }
+            } catch (error) { 
+                console.error('Error cargando catálogos o permisos:', error); 
+            } finally {
+                setCargando(false);
+            }
         };
-        fetchCatalogo();
+        fetchCatalogosYPermisos();
 
         const handleClickOutside = (event) => {
             if (sucursalRef.current && !sucursalRef.current.contains(event.target)) setShowSucursalHelp(false);
@@ -43,18 +72,21 @@ const TransitReport = () => {
         };
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
+    }, [esAdmin]);
 
+    // Filtros dinámicos manejando mayúsculas y minúsculas
     const sucursalesFiltradas = catalogoSucursales.filter(s => {
-        const query = filtros.id_sucursal ? filtros.id_sucursal.toString().toLowerCase() : '';
-        return s.ID_SUCURSAL.toString().includes(query) || s.NOMBRE_UBICACION.toLowerCase().includes(query);
+        const query = (filtros.id_sucursal || '').toString().toLowerCase();
+        const id = (s.ID_SUCURSAL || s.id_sucursal || '').toString();
+        const nombre = (s.NOMBRE_UBICACION || s.nombre_ubicacion || '').toLowerCase();
+        return id.includes(query) || nombre.includes(query);
     });
 
     const medicamentosFiltrados = catalogoMedicamentos.filter(m => {
-        const query = filtros.id_medicamento ? filtros.id_medicamento.toString().toLowerCase() : '';
-        const idMatch = m.ID_MEDICAMENTO?.toString().includes(query);
-        const nameMatch = m.NOMBRE_COMERCIAL?.toLowerCase().includes(query);
-        return idMatch || nameMatch;
+        const query = (filtros.id_medicamento || '').toString().toLowerCase();
+        const id = (m.ID_MEDICAMENTO || m.id_medicamento || '').toString();
+        const nombre = (m.NOMBRE_COMERCIAL || m.nombre_comercial || '').toLowerCase();
+        return id.includes(query) || nombre.includes(query);
     });
 
     const buscarTransito = async (e) => {
@@ -84,94 +116,114 @@ const TransitReport = () => {
             const data = await res.json();
             if(data.success) {
                 alert(data.message);
-                setStockTransito(stockTransito.filter(item => item.ID_LOTE !== id_lote));
+                setStockTransito(stockTransito.filter(item => (item.ID_LOTE || item.id_lote) !== id_lote));
+            } else {
+                alert(data.message || 'No se pudo procesar la recepción.');
             }
         } catch (error) { console.error(error); }
     };
 
+    // Si está cargando inicialmente, mostramos la plantilla reutilizable
+    if (cargando) {
+        return <Cargando mensaje="Cargando..." />;
+    }
+
     return (
-        <div style={{ padding: '40px 20px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', maxWidth: '1000px', margin: '0 auto 30px auto' }}>
-                <button onClick={() => navigate('/dashboard')} style={{ background: '#333', color: '#fff', border: '1px solid #555', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>
+        <div className="transit-report-container">
+            <div className="transit-report-header">
+                <button onClick={() => navigate('/dashboard')} className="btn-regresar-transit">
                     ← Regresar al Dashboard
                 </button>
-                <div style={{ textAlign: 'center', flex: 1 }}>
-                    <h2 style={{ fontSize: '22px', margin: '0 0 8px 0', color: '#fff', fontWeight: '500' }}>Visualizar Stock en Tránsito</h2>
-                    <p style={{ color: '#666', margin: 0, fontSize: '14px' }}>Auditoría de lotes pendientes de recepción en centro receptor.</p>
+                <div className="transit-report-title-wrapper">
+                    <h2 className="transit-report-main-title">
+                        Visualizar Stock en Tránsito
+                    </h2>
+                    <p className="transit-report-subtitle">Auditoría de lotes pendientes de recepción en centro receptor.</p>
                 </div>
-                <div style={{ width: '130px' }}></div> {/* Espaciador para centrar el título */}
+                <div style={{ width: '130px' }}></div>
             </div>
 
             {!vistaResultados && (
-                <div style={{ background: '#1c1c1e', padding: '30px', borderRadius: '8px', border: '1px solid #2a2a2c', maxWidth: '1000px', margin: '0 auto' }}>
-                    <h3 style={{ textAlign: 'center', color: '#555', margin: '0 0 25px 0', fontSize: '16px', fontWeight: 'bold' }}>Selecciones de Base de Datos</h3>
+                <div className="transit-filter-card">
+                    <h3 className="transit-filter-section-title">Selecciones de Base de Datos</h3>
 
-                    <form onSubmit={buscarTransito} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        <div style={{ display: 'flex', width: '100%', maxWidth: '900px' }}>
+                    <form onSubmit={buscarTransito} className="transit-filter-form">
+                        <div className="transit-filter-fields-row">
                             
-                            {/* CENTRO RECEPTOR CON MATCHCODE IDÉNTICO */}
-                            <div ref={sucursalRef} style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' }}>
-                                <label style={{ color: '#777', fontSize: '12px', marginBottom: '8px', textAlign: 'center' }}>Centro Receptor (ID Sucursal):</label>
+                            {/* CENTRO RECEPTOR */}
+                            <div ref={sucursalRef} className="transit-input-group">
+                                <label className="transit-input-label">Centro Receptor (ID Sucursal):</label>
                                 <input 
                                     type="text" 
-                                    placeholder="Ej. 1 o Miraflores" 
+                                    placeholder="Ej. 1 o Miraflores (Dejar vacío para todos)"
                                     value={filtros.id_sucursal} 
                                     onFocus={() => setShowSucursalHelp(true)}
-                                    onChange={e => { setFiltros({...filtros, id_sucursal: e.target.value}); setShowSucursalHelp(true); }} 
-                                    style={{ background: '#333', color: '#fff', border: '1px solid #444', borderRight: 'none', padding: '12px 15px', borderRadius: '4px 0 0 4px', outline: 'none' }} 
+                                    onChange={e => { 
+                                        setFiltros({...filtros, id_sucursal: e.target.value}); 
+                                        setShowSucursalHelp(true); 
+                                    }} 
+                                    className="transit-input-field admin"
                                 />
                                 {showSucursalHelp && (
-                                    <div style={{ position: 'absolute', top: '100%', left: 0, width: '100%', background: '#252528', border: '1px solid #444', borderRadius: '4px', zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.5)', marginTop: '4px', maxHeight: '200px', overflowY: 'auto' }}>
-                                        <div style={{ padding: '8px 12px', borderBottom: '1px solid #333', fontWeight: 'bold', fontSize: '13px', color: '#fff' }}>Seleccionar Centro</div>
+                                    <div className="transit-dropdown-help">
+                                        <div className="transit-dropdown-header-title">Seleccionar Centro</div>
                                         {sucursalesFiltradas.length > 0 ? (
-                                            sucursalesFiltradas.map(s => (
-                                                <div key={s.ID_SUCURSAL} onClick={() => { setFiltros({...filtros, id_sucursal: s.ID_SUCURSAL.toString()}); setShowSucursalHelp(false); }}
-                                                     style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '12px', borderTop: '1px solid #333', color: '#ddd' }}
-                                                     onMouseEnter={e => e.currentTarget.style.background = '#3a3a3d'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                                                >
-                                                    <strong style={{ color: '#ffaa00' }}>{s.ID_SUCURSAL}</strong> - {s.NOMBRE_UBICACION}
-                                                </div>
-                                            ))
+                                            sucursalesFiltradas.map(s => {
+                                                const id = s.ID_SUCURSAL || s.id_sucursal;
+                                                const nom = s.NOMBRE_UBICACION || s.nombre_ubicacion;
+                                                return (
+                                                    <div key={id} onClick={() => { setFiltros({...filtros, id_sucursal: id.toString()}); setShowSucursalHelp(false); }}
+                                                         className="transit-dropdown-item"
+                                                    >
+                                                        <span className="transit-dropdown-id-sucursal">{id}</span>
+                                                        {nom}
+                                                    </div>
+                                                );
+                                            })
                                         ) : (
-                                            <div style={{ padding: '8px 12px', color: '#888', fontSize: '12px' }}>No hay resultados</div>
+                                            <div className="transit-dropdown-vacio">No hay resultados</div>
                                         )}
                                     </div>
                                 )}
                             </div>
 
-                            {/* MATERIAL CON MATCHCODE IDÉNTICO AL QUE SÍ FUNCIONA */}
-                            <div ref={materialRef} style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' }}>
-                                <label style={{ color: '#777', fontSize: '12px', marginBottom: '8px', textAlign: 'center' }}>Material (ID Producto):</label>
+                            {/* MATERIAL */}
+                            <div ref={materialRef} className="transit-input-group">
+                                <label className="transit-input-label">Producto (ID Producto):</label>
                                 <input 
                                     type="text" 
                                     placeholder="Ej. 3 o Paracetamol" 
                                     value={filtros.id_medicamento} 
                                     onFocus={() => setShowMaterialHelp(true)}
                                     onChange={e => { setFiltros({...filtros, id_medicamento: e.target.value}); setShowMaterialHelp(true); }} 
-                                    style={{ background: '#333', color: '#fff', border: '1px solid #444', borderRight: 'none', padding: '12px 15px', outline: 'none' }} 
+                                    className="transit-input-field material"
                                 />
                                 {showMaterialHelp && (
-                                    <div style={{ position: 'absolute', top: '100%', left: 0, width: '100%', background: '#252528', border: '1px solid #444', borderRadius: '4px', zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.5)', marginTop: '4px', maxHeight: '200px', overflowY: 'auto' }}>
-                                        <div style={{ padding: '8px 12px', borderBottom: '1px solid #333', fontWeight: 'bold', fontSize: '13px', color: '#fff' }}>Seleccionar Material</div>
+                                    <div className="transit-dropdown-help">
+                                        <div className="transit-dropdown-header-title">Seleccionar Material</div>
                                         {medicamentosFiltrados.length > 0 ? (
-                                            medicamentosFiltrados.map(m => (
-                                                <div key={m.ID_MEDICAMENTO} onClick={() => { setFiltros({...filtros, id_medicamento: m.ID_MEDICAMENTO.toString()}); setShowMaterialHelp(false); }}
-                                                     style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '12px', borderTop: '1px solid #333', color: '#ddd' }}
-                                                     onMouseEnter={e => e.currentTarget.style.background = '#3a3a3d'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                                                >
-                                                    <strong style={{ color: '#00ffcc' }}>{m.ID_MEDICAMENTO}</strong> - {m.NOMBRE_COMERCIAL}
-                                                </div>
-                                            ))
+                                            medicamentosFiltrados.map(m => {
+                                                const id = m.ID_MEDICAMENTO || m.id_medicamento;
+                                                const nom = m.NOMBRE_COMERCIAL || m.nombre_comercial;
+                                                return (
+                                                    <div key={id} onClick={() => { setFiltros({...filtros, id_medicamento: id.toString()}); setShowMaterialHelp(false); }}
+                                                         className="transit-dropdown-item"
+                                                    >
+                                                        <span className="transit-dropdown-id-material">{id}</span>
+                                                        {nom}
+                                                    </div>
+                                                );
+                                            })
                                         ) : (
-                                            <div style={{ padding: '8px 12px', color: '#888', fontSize: '12px' }}>No hay medicamentos en el catálogo</div>
+                                            <div className="transit-dropdown-vacio">No hay medicamentos en el catálogo</div>
                                         )}
                                     </div>
                                 )}
                             </div>
 
-                            <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-                                <button type="submit" style={{ background: '#0055ff', color: '#fff', border: 'none', padding: '13px 25px', fontWeight: 'bold', cursor: 'pointer', outline: 'none' }}>Ejecutar</button>
-                                <button type="button" onClick={() => setFiltros({id_sucursal:'', id_medicamento:''})} style={{ background: '#4a4a4a', color: '#ddd', border: 'none', padding: '13px 20px', borderRadius: '0 4px 4px 0', cursor: 'pointer', outline: 'none' }}>Limpiar</button>
+                            <div className="transit-buttons-action-wrapper">
+                                <button type="submit" className="btn-ejecutar-transit">Ejecutar</button>
+                                <button type="button" onClick={() => setFiltros({id_sucursal: '', id_medicamento:''})} className="btn-limpiar-transit">Limpiar</button>
                             </div>
                         </div>
                     </form>
@@ -179,41 +231,56 @@ const TransitReport = () => {
             )}
 
             {vistaResultados && (
-                <div style={{ background: '#1c1c1e', padding: '30px', borderRadius: '8px', border: '1px solid #2a2a2c', maxWidth: '1000px', margin: '0 auto' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
-                        <h3 style={{ color: '#555', margin: 0, fontSize: '16px', fontWeight: 'bold' }}>Lotes en Tránsito (Pendientes de Recepción)</h3>
-                        <button onClick={() => setVistaResultados(false)} style={{ background: '#333', color: '#fff', border: '1px solid #555', padding: '8px 15px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}>← Volver</button>
+                <div className="transit-results-card">
+                    <div className="transit-results-header-bar">
+                        <h3 className="transit-results-title">Lotes en Tránsito (Pendientes de Recepción)</h3>
+                        <button onClick={() => setVistaResultados(false)} className="btn-volver-filtros">← Volver</button>
                     </div>
 
-                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+                    <table className="transit-tabla-resultados">
                         <thead>
-                            <tr style={{ borderBottom: '1px solid #333' }}>
-                                <th style={{ padding: '12px', color: '#555' }}>ID Lote</th>
-                                <th style={{ padding: '12px', color: '#555' }}>Centro Receptor</th>
-                                <th style={{ padding: '12px', color: '#555' }}>Material</th>
-                                <th style={{ padding: '12px', color: '#555' }}>No. Lote Fab.</th>
-                                <th style={{ padding: '12px', color: '#555', textAlign: 'right' }}>Cantidad</th>
-                                <th style={{ padding: '12px', color: '#555', textAlign: 'center' }}>Acción (MIGO)</th>
+                            <tr>
+                                <th>ID Lote</th>
+                                <th>Centro Receptor</th>
+                                <th>Material</th>
+                                <th>No. Lote Fab.</th>
+                                <th className="align-right">Cantidad</th>
+                                <th className="align-center">Acción (MIGO)</th>
                             </tr>
                         </thead>
                         <tbody>
                             {stockTransito.length > 0 ? (
-                                stockTransito.map((inv) => (
-                                    <tr key={inv.ID_LOTE} style={{ borderBottom: '1px solid #2a2a2c' }}>
-                                        <td style={{ padding: '16px 12px', color: '#aaa' }}>#{inv.ID_LOTE}</td>
-                                        <td style={{ padding: '16px 12px', color: '#ffaa00' }}>{inv.ID_SUCURSAL} - {inv.SUCURSAL}</td>
-                                        <td style={{ padding: '16px 12px', color: '#00ffcc' }}>{inv.ID_MEDICAMENTO} - {inv.MEDICAMENTO}</td>
-                                        <td style={{ padding: '16px 12px', color: '#666' }}>{inv.NUMERO_LOTE}</td>
-                                        <td style={{ padding: '16px 12px', color: '#fff', fontWeight: 'bold', textAlign: 'right' }}>{inv.CANTIDAD}</td>
-                                        <td style={{ padding: '16px 12px', textAlign: 'center' }}>
-                                            <button onClick={() => handleRecibir(inv.ID_LOTE)} style={{ background: '#00cc66', color: '#000', border: 'none', padding: '6px 12px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>
-                                                Contabilizar Recepción
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))
+                                stockTransito.map((inv) => {
+                                    const nombreSucursalItem = (inv.SUCURSAL || inv.sucursal || '').toString().trim();
+                                    const puedeRecepcionar = esAdmin || (nombreSucursalItem.toLowerCase() === sucursalUsuarioNombre.toLowerCase());
+
+                                    return (
+                                        <tr key={inv.ID_LOTE || inv.id_lote}>
+                                            <td className="td-lote-id">#{inv.ID_LOTE || inv.id_lote}</td>
+                                            <td className="td-centro-receptor">
+                                                {inv.ID_SUCURSAL || inv.id_sucursal} - {nombreSucursalItem}
+                                            </td>
+                                            <td className="td-material-nombre">
+                                                {inv.ID_MEDICAMENTO || inv.id_medicamento} - {inv.MEDICAMENTO || inv.medicamento}
+                                            </td>
+                                            <td className="td-lote-fab">{inv.NUMERO_LOTE || inv.numero_lote}</td>
+                                            <td className="align-right td-cantidad-transito">{inv.CANTIDAD || inv.cantidad}</td>
+                                            <td className="align-center">
+                                                {puedeRecepcionar ? (
+                                                    <button onClick={() => handleRecibir(inv.ID_LOTE || inv.id_lote)} className="btn-contabilizar-recepcion">
+                                                        Contabilizar Recepción
+                                                    </button>
+                                                ) : (
+                                                    <span style={{ fontSize: '11px', color: '#888', fontStyle: 'italic' }} title="Solo el Administrador o el Gerente de esta sucursal pueden recibir este lote">
+                                                        🔒 Solo sucursal destino
+                                                    </span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    );
+                                })
                             ) : (
-                                <tr><td colSpan="6" style={{ padding: '30px', textAlign: 'center', color: '#555' }}>No hay mercancía en tránsito.</td></tr>
+                                <tr><td colSpan="6" className="transit-tabla-vacia">No hay mercancía en tránsito para esta selección.</td></tr>
                             )}
                         </tbody>
                     </table>

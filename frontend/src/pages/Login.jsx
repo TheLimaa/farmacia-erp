@@ -1,76 +1,104 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import Cargando from '../components/Cargando';
+import logoVita from '../assets/Vita+.svg';
 
 const Login = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [cargando, setCargando] = useState(false);
     const { login } = useAuth();
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setError('');
+        setCargando(true);
+
+        const tiempoMinimo = new Promise(resolve => setTimeout(resolve, 1000));
+
         try {
-            const response = await fetch('http://localhost:3000/api/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
-            });
+            const [response] = await Promise.all([
+                fetch('http://localhost:3000/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                }),
+                tiempoMinimo
+            ]);
+
             const data = await response.json();
+
             if (response.ok && data.success) {
+                localStorage.setItem('user', JSON.stringify(data.usuario));
                 login(data.token, data.usuario);
-                navigate('/dashboard');
+                
+                const rolUsuario = (data.usuario?.rol || '').toUpperCase();
+                if (rolUsuario === 'REPARTIDOR') {
+                    navigate('/repartidor');
+                } else {
+                    navigate('/dashboard');
+                }
             } else {
                 setError(data.message || 'Credenciales inválidas');
+                setCargando(false);
             }
         } catch (err) {
             setError('Error de conexión con el servidor');
+            setCargando(false);
         }
     };
 
+    if (cargando) {
+        return <Cargando mensaje="Iniciando sesión..." />;
+    }
+
     return (
-        <div style={{ 
-            height: '100vh', 
-            width: '100vw', 
-            background: 'linear-gradient(135deg, #c7d9ef 0%, #e2ecf8 50%, #b3cfe8 100%)', 
-            display: 'flex', 
-            justifyContent: 'center', 
-            alignItems: 'center',
-            fontFamily: 'system-ui, -apple-system, sans-serif',
-            margin: 0,
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            zIndex: 9999
-        }}>
-            <div style={{ width: '380px', padding: '40px 30px', background: 'rgba(255, 255, 255, 0.9)', backdropFilter: 'blur(10px)', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)', borderRadius: '4px' }}>
-                {error && <div style={{ background: '#ffdddd', color: '#990000', padding: '8px', marginBottom: '15px', fontSize: '13px', textAlign: 'center' }}>{error}</div>}
+        <div className="login-container">
+            <div className="login-card">
                 
-                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                    <div>
+                {/* Cabecera elegante y equilibrada */}
+                <div className="login-header-bar">
+                    <img 
+                        src={logoVita} 
+                        alt="Logo Vitta+" 
+                        className="login-logo-img"
+                    />
+                    <div className="login-header-text">
+                        <h2 className="login-brand-title">Farmacias Vita+</h2>
+                    </div>
+                </div>
+
+                {error && <div className="login-error-message">{error}</div>}
+                
+                <form onSubmit={handleSubmit} className="login-form">
+                    <div className="login-field-group">
+                        <label className="login-label">Usuario</label>
                         <input 
                             type="text" 
-                            placeholder="Usuario" 
+                            placeholder="Ingrese su usuario" 
                             value={username} 
                             onChange={(e) => setUsername(e.target.value)} 
                             required 
-                            style={{ width: '100%', padding: '10px', background: '#fff', color: '#000', border: '1px solid #b0c4de', borderRadius: '2px', boxSizing: 'border-box', outline: 'none' }}
+                            className="login-input"
                         />
                     </div>
-                    <div>
+                    <div className="login-field-group">
+                        <label className="login-label">Contraseña</label>
                         <input 
                             type="password" 
-                            placeholder="Contraseña" 
+                            placeholder="••••••••" 
                             value={password} 
                             onChange={(e) => setPassword(e.target.value)} 
                             required 
-                            style={{ width: '100%', padding: '10px', background: '#fff', color: '#000', border: '1px solid #b0c4de', borderRadius: '2px', boxSizing: 'border-box', outline: 'none' }}
+                            className="login-input"
                         />
                     </div>
 
-                    <button type="submit" style={{ width: '100%', padding: '11px', background: '#4682b4', color: '#fff', border: 'none', borderRadius: '2px', fontWeight: '500', cursor: 'pointer', marginTop: '10px' }}>
-                        Acceder al sistema
+                    <button type="submit" className="login-submit-btn">
+                        Iniciar Sesión
                     </button>
                 </form>
             </div>

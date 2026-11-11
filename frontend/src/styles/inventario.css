@@ -1,0 +1,111 @@
+.inventory-container {
+    padding: 20px 15px;
+    font-family: system-ui, -apple-system, sans-serif;
+    color: #e0e0e0;
+    background: #121214;
+    min-height: 100vh;
+    box-sizing: border-box;
+}
+
+.inventory-back-btn {
+    background: #252528;
+    color: #38bdf8;
+    border: 1px solid #444;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    margin-bottom: 20px;
+}
+
+.inventory-main-title {
+    color: #fff;
+    margin: 0 0 5px 0;
+}
+
+.inventory-main-subtitle {
+    color: #aaa;
+    font-size: 13px;
+    margin-bottom: 20px;
+}
+
+.inventory-tabs-container {
+    display: flex;
+    gap: 8px;
+    border-bottom: 1px solid #333;
+    margin-bottom: 20px;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+}
+
+.inventory-tab-btn {
+    padding: 10px 18px;
+    border: none;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+.inventory-tab-btn.entrada {
+    background: #1c1c1e;
+    color: #ffaa00;
+    border-bottom: 3px solid #ffaa00;
+}
+
+.inventory-tab-btn.material {
+    background: #1c1c1e;
+    color: #00ffcc;
+    border-bottom: 3px solid #00ffcc;
+}
+
+.inventory-tab-btn.catalogo {
+    background: #1c1c1e;
+    color: #38bdf8;
+    border-bottom: 3px solid #38bdf8;
+}
+
+.inventory-tab-btn.inactivo {
+    background: transparent;
+    color: #888;
+    border-bottom: none;
+}
+
+.inventory-mensaje {
+    padding: 12px;
+    margin-bottom: 20px;
+    font-weight: bold;
+    font-size: 13px;
+    border-radius: 4px;
+}
+
+.inventory-mensaje.error {
+    background: #450a0a;
+    border-left: 4px solid #ef4444;
+    color: #fca5a5;
+}
+
+.inventory-mensaje.exito {
+    background: #064e3b;
+    border-left: 4px solid #34d399;
+    color: #34d399;
+}
+
+.inventory-card-section {
+    background: #1c1c1e;
+    padding: 20px;
+    border-radius: 6px;
+    border: 1px solid #2a2a2c;
+    box-sizing: border-box;
+}
+
+.inventory-card-section-narrow {
+    background: #1c1c1e;
+    padding: 20px;
+    border-radius: 6px;
+    border: 1px solid #2a2a2c;
+    max-width: 600px;
+    width: 100%;
+    box-sizing: border-box;
+}

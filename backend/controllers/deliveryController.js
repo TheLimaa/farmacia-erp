@@ -1,9 +1,7 @@
-const oracledb = require('oracledb');
+const db = require('../config/db'); // Importa tu conexión a PostgreSQL
 
 const getPedidosEntrega = async (req, res) => {
-    let connection;
     try {
-        connection = await oracledb.getConnection();
         const sql = `
             SELECT 
                 p.id_pedido,
@@ -20,13 +18,11 @@ const getPedidosEntrega = async (req, res) => {
             JOIN empleado e ON p.id_repartidor = e.id_empleado
             ORDER BY p.fecha_hora_solicitud DESC
         `;
-        const result = await connection.execute(sql, [], { outFormat: oracledb.OUT_FORMAT_OBJECT });
+        const result = await db.query(sql);
         res.status(200).json({ success: true, data: result.rows });
     } catch (error) {
         console.error('Error al obtener pedidos de entrega:', error);
         res.status(500).json({ success: false, message: 'Error interno' });
-    } finally {
-        if (connection) await connection.close();
     }
 };
 

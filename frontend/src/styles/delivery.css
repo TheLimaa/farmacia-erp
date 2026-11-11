@@ -1,0 +1,233 @@
+.delivery-container {
+    padding: 20px 15px;
+    font-family: system-ui, -apple-system, sans-serif;
+    color: #fff;
+    box-sizing: border-box;
+}
+
+.delivery-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.btn-regresar-delivery {
+    background: #333;
+    color: #fff;
+    border: 1px solid #555;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.delivery-title-container {
+    text-align: center;
+    flex: 1;
+}
+
+.delivery-title-container h2 {
+    font-size: 22px;
+    margin: 0 0 8px 0;
+    font-weight: 500;
+}
+
+.delivery-title-container p {
+    color: #666;
+    margin: 0;
+    font-size: 14px;
+}
+
+.delivery-filter-card {
+    background: #1c1c1e;
+    padding: 15px 20px;
+    border-radius: 8px;
+    border: 1px solid #2a2a2c;
+    max-width: 1200px;
+    margin: 0 auto 20px auto;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.delivery-filter-label-title {
+    color: #aaa;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.delivery-filter-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.delivery-filter-group label {
+    font-size: 12px;
+    color: #888;
+}
+
+.delivery-date-input {
+    padding: 6px 10px;
+    background: #121214;
+    color: #fff;
+    border: 1px solid #444;
+    border-radius: 4px;
+    outline: none;
+}
+
+.btn-restablecer-fecha {
+    background: transparent;
+    color: #38bdf8;
+    border: 1px solid #38bdf8;
+    padding: 6px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    margin-left: auto;
+}
+
+@media (max-width: 600px) {
+    .btn-restablecer-fecha {
+        margin-left: 0;
+        width: 100%;
+    }
+}
+
+.delivery-mensaje-alerta {
+    max-width: 1200px;
+    margin: 0 auto 20px auto;
+    padding: 12px;
+    border-radius: 6px;
+    text-align: center;
+    font-weight: bold;
+}
+
+.delivery-mensaje-alerta.error {
+    background: #450a0a;
+    border-left: 4px solid #ef4444;
+    color: #fca5a5;
+}
+
+.delivery-mensaje-alerta.exito {
+    background: #064e3b;
+    border-left: 4px solid #34d399;
+    color: #34d399;
+}
+
+.delivery-table-card {
+    background: #1c1c1e;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #2a2a2c;
+    max-width: 1200px;
+    margin: 0 auto;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.delivery-table {
+    width: 100%;
+    min-width: 750px;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 13px;
+}
+
+.delivery-table th {
+    border-bottom: 1px solid #333;
+    color: #888;
+    padding: 12px;
+}
+
+.delivery-table th.align-right,
+.delivery-table td.align-right { text-align: right; }
+
+.delivery-table th.align-center,
+.delivery-table td.align-center { text-align: center; }
+
+.delivery-table td {
+    padding: 15px 12px;
+    border-bottom: 1px solid #2a2a2c;
+}
+
+.td-id-pedido { color: #00ffcc; font-weight: bold; }
+.td-cliente-nombre { color: #fff; font-weight: bold; }
+.td-cliente-direccion { color: #888; font-size: 11px; margin-top: 4px; }
+.td-sucursal-origen { color: #ffaa00; }
+.td-estado-pedido { font-weight: bold; }
+
+.estado-en-ruta { color: #a78bfa; }
+.estado-cancelado { color: #ef4444; }
+.estado-entregado { color: #34d399; }
+.estado-default { color: #38bdf8; }
+
+.total-tachado {
+    text-decoration: line-through;
+    color: #666;
+}
+
+.badge-metodo-pago {
+    background: #333;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    color: #ddd;
+}
+
+.acciones-wrapper {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.btn-confirmar-entrega,
+.btn-cancelar-pedido {
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 12px;
+}
+
+.btn-confirmar-entrega:not(:disabled) {
+    background: #00cc66;
+    color: #000;
+    cursor: pointer;
+    border: none;
+}
+
+.btn-confirmar-entrega:disabled {
+    background: #2a4435;
+    color: #666;
+    cursor: not-allowed;
+    border: none;
+}
+
+.btn-cancelar-pedido:not(:disabled) {
+    background: #252528;
+    color: #ef4444;
+    border: 1px solid #ef4444;
+    cursor: pointer;
+}
+
+.btn-cancelar-pedido:disabled {
+    background: #3a2020;
+    color: #666;
+    border: 1px solid #4a2a2a;
+    cursor: not-allowed;
+}
+
+.delivery-tabla-vacia {
+    padding: 30px;
+    text-align: center;
+    color: #555;
+}
