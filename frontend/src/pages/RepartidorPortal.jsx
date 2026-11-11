@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Cargando from '../components/Cargando'; // <--- Importamos la plantilla de carga
+import { API_URL } from '../config/api';
 
 const RepartidorPortal = () => {
     const navigate = useNavigate();
@@ -75,7 +76,7 @@ const RepartidorPortal = () => {
                 });
 
                 // 5. Enviar la suscripción al Backend vinculada al repartidor
-                await fetch('http://localhost:3000/api/notificaciones/suscribir', {
+                await fetch('' + API_URL + '/api/notificaciones/suscribir', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -106,8 +107,8 @@ const RepartidorPortal = () => {
 
             // Ejecutamos las peticiones y el tiempo mínimo en paralelo si se muestra el loader inicial
             const [resUser, resPedidos] = await Promise.all([
-                fetch('http://localhost:3000/api/usuarios').then(res => res.json()).catch(() => ({ success: false })),
-                fetch('http://localhost:3000/api/pedidos/todos').then(res => res.json()).catch(() => ({ success: false })),
+                fetch('' + API_URL + '/api/usuarios').then(res => res.json()).catch(() => ({ success: false })),
+                fetch('' + API_URL + '/api/pedidos/todos').then(res => res.json()).catch(() => ({ success: false })),
                 ...(mostrarLoader ? [tiempoMinimo] : [])
             ]);
 
@@ -144,14 +145,14 @@ const RepartidorPortal = () => {
 
     const cambiarEstadoPedido = async (idPedido, nuevoEstado) => {
         try {
-            await fetch(`http://localhost:3000/api/pedidos/${idPedido}/estado`, {
+            await fetch(`' + API_URL + '/api/pedidos/${idPedido}/estado`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ estado: nuevoEstado })
             });
             
             if (nuevoEstado === 'ENTREGADO') {
-                await fetch(`http://localhost:3000/api/pedidos/${idPedido}/entregar`, { method: 'PUT' });
+                await fetch(`' + API_URL + '/api/pedidos/${idPedido}/entregar`, { method: 'PUT' });
             }
 
             setMensaje(`✅ Pedido #${idPedido} actualizado a: ${nuevoEstado}`);
@@ -172,7 +173,7 @@ const RepartidorPortal = () => {
         }
 
         try {
-            const res = await fetch(`http://localhost:3000/api/pedidos/${idPedido}/cancelar`, {
+            const res = await fetch(`' + API_URL + '/api/pedidos/${idPedido}/cancelar`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -193,7 +194,7 @@ const RepartidorPortal = () => {
 
     const verImprimirFactura = async (p) => {
         try {
-            const res = await fetch(`http://localhost:3000/api/pedidos/${p.ID_PEDIDO}/generar-factura`, {
+            const res = await fetch(`' + API_URL + '/api/pedidos/${p.ID_PEDIDO}/generar-factura`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

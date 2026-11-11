@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Cargando from '../components/Cargando'; // <--- Importamos la plantilla de carga
+import Cargando from '../components/Cargando';
+import { API_URL } from '../config/api';
 
 const ActivosFijos = () => {
     const navigate = useNavigate();
@@ -38,10 +39,10 @@ const ActivosFijos = () => {
             try {
                 // Ejecutamos las peticiones y los 2 segundos mínimos en paralelo
                 const [resActivos, resSucursalesOrUser] = await Promise.all([
-                    fetch('http://localhost:3000/api/activos').then(res => res.json()).catch(() => ({ success: false })),
+                    fetch('' + API_URL + '/api/activos').then(res => res.json()).catch(() => ({ success: false })),
                     esAdmin 
-                        ? fetch('http://localhost:3000/api/sucursales').then(res => res.json()).catch(() => ({ success: false }))
-                        : fetch('http://localhost:3000/api/usuarios').then(res => res.json()).catch(() => ({ success: false })),
+                        ? fetch('' + API_URL + '/api/sucursales').then(res => res.json()).catch(() => ({ success: false }))
+                        : fetch('' + API_URL + '/api/usuarios').then(res => res.json()).catch(() => ({ success: false })),
                     tiempoMinimo
                 ]);
 
@@ -86,7 +87,7 @@ const ActivosFijos = () => {
 
     const cargarActivos = async () => {
         try {
-            const res = await fetch('http://localhost:3000/api/activos');
+            const res = await fetch('' + API_URL + '/api/activos');
             const data = await res.json();
             if (data.success) setActivos(data.data);
         } catch (error) { console.error('Error al cargar activos:', error); }
@@ -103,7 +104,7 @@ const ActivosFijos = () => {
         }
 
         try {
-            const res = await fetch('http://localhost:3000/api/activos', {
+            const res = await fetch('' + API_URL + '/api/activos', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(nuevoActivo)
@@ -131,7 +132,7 @@ const ActivosFijos = () => {
         }
 
         try {
-            await fetch(`http://localhost:3000/api/activos/${id}/estado`, {
+            await fetch(`' + API_URL + '/api/activos/${id}/estado`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ estado: nuevoEstado })

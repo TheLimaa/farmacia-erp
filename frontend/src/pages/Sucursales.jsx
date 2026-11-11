@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Cargando from '../components/Cargando'; // <--- Importamos la plantilla de carga
+import { API_URL } from '../config/api';
 
 const Sucursales = () => {
     const navigate = useNavigate();
@@ -25,7 +26,7 @@ const Sucursales = () => {
             setCargando(true);
             try {
                 const [res] = await Promise.all([
-                    fetch('http://localhost:3000/api/sucursales').then(r => r.json()).catch(() => ({ success: false })),
+                    fetch('' + API_URL + '/api/sucursales').then(r => r.json()).catch(() => ({ success: false })),
                     tiempoMinimo
                 ]);
 
@@ -45,7 +46,7 @@ const Sucursales = () => {
 
     const cargarSucursales = async () => {
         try {
-            const res = await fetch('http://localhost:3000/api/sucursales');
+            const res = await fetch('' + API_URL + '/api/sucursales');
             const data = await res.json();
             if (data.success) setSucursales(data.data);
         } catch (error) {
@@ -71,8 +72,8 @@ const Sucursales = () => {
     const guardarSucursal = async (e) => {
         e.preventDefault();
         const url = editandoId 
-            ? `http://localhost:3000/api/sucursales/${editandoId}`
-            : 'http://localhost:3000/api/sucursales';
+            ? `' + API_URL + '/api/sucursales/${editandoId}`
+            : '' + API_URL + '/api/sucursales';
         const method = editandoId ? 'PUT' : 'POST';
 
         try {
@@ -102,7 +103,7 @@ const Sucursales = () => {
     const cambiarEstado = async (id, estadoActual) => {
         const nuevoEstado = estadoActual === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO';
         try {
-            const res = await fetch(`http://localhost:3000/api/sucursales/${id}`, {
+            const res = await fetch(`' + API_URL + '/api/sucursales/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ estado: nuevoEstado })
@@ -121,7 +122,7 @@ const Sucursales = () => {
     const eliminarSucursal = async (id) => {
         if (!window.confirm(`¿Está seguro de eliminar la sucursal ID ${id}?`)) return;
         try {
-            const res = await fetch(`http://localhost:3000/api/sucursales/${id}`, { method: 'DELETE' });
+            const res = await fetch(`' + API_URL + '/api/sucursales/${id}`, { method: 'DELETE' });
             const data = await res.json();
             if (data.success) {
                 setMensaje('✅ ' + data.message);

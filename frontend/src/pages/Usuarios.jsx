@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Cargando from '../components/Cargando'; // <--- Importamos la plantilla de carga
+import { API_URL } from '../config/api';
 
 const Usuarios = () => {
     const navigate = useNavigate();
@@ -26,7 +27,7 @@ const Usuarios = () => {
             try {
                 // Ejecutamos la petición y el tiempo mínimo en paralelo
                 const [res] = await Promise.all([
-                    fetch('http://localhost:3000/api/usuarios').then(r => r.json()).catch(() => ({ success: false })),
+                    fetch('' + API_URL + '/api/usuarios').then(r => r.json()).catch(() => ({ success: false })),
                     tiempoMinimo
                 ]);
 
@@ -45,7 +46,7 @@ const Usuarios = () => {
 
     const cargarUsuarios = async () => {
         try {
-            const res = await fetch('http://localhost:3000/api/usuarios');
+            const res = await fetch('' + API_URL + '/api/usuarios');
             const data = await res.json();
             if (data.success) setUsuarios(data.data);
         } catch (error) {
@@ -56,7 +57,7 @@ const Usuarios = () => {
     const buscarEmpleado = async () => {
         if (!idEmpleadoBusqueda) return;
         try {
-            const res = await fetch(`http://localhost:3000/api/usuarios/empleado/${idEmpleadoBusqueda}`);
+            const res = await fetch(`' + API_URL + '/api/usuarios/empleado/${idEmpleadoBusqueda}`);
             const data = await res.json();
             
             if (data.success && data.data) {
@@ -98,7 +99,7 @@ const Usuarios = () => {
         }
 
         try {
-            const res = await fetch('http://localhost:3000/api/usuarios', {
+            const res = await fetch('' + API_URL + '/api/usuarios', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -129,7 +130,7 @@ const Usuarios = () => {
     const eliminarUsuario = async (id, user) => {
         if (!window.confirm(`¿Está seguro de eliminar las credenciales de "${user}"?`)) return;
         try {
-            const res = await fetch(`http://localhost:3000/api/usuarios/${id}`, { method: 'DELETE' });
+            const res = await fetch(`' + API_URL + '/api/usuarios/${id}`, { method: 'DELETE' });
             const data = await res.json();
             if (data.success) {
                 setMensaje('✅ ' + data.message);

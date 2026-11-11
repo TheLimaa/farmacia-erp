@@ -34,8 +34,14 @@ const usuarioRoutes = require('./routes/usuario.routes');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Middlewares globales
-app.use(cors());
+// Middlewares globales con CORS robusto y explícito para evitar bloqueos en la nube
+app.use(cors({
+    origin: '*', // Permite peticiones desde cualquier origen (Vercel, localhost, etc.)
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
+app.options('*', cors()); // Manejo explícito de peticiones preflight OPTIONS
+
 app.use(express.json());
 
 // ==========================================
@@ -63,14 +69,10 @@ app.post('/api/notificaciones/suscribir', async (req, res) => {
             WHERE UPPER(u.nombre_usuario) = UPPER($1)
         `;
         
-        // Asumiendo que tu módulo 'db' expone una función query(text, params)
         const result = await db.query(sqlCruze, [keyLimpia]);
         
         if (result.rows.length > 0) {
-            // PostgreSQL devuelve los nombres de columnas en minúsculas por defecto
             const nombreReal = (result.rows[0].nombre_completo || '').trim();
-            
-            // Guardamos también el nombre real en el mapa
             suscripcionesRepartidores.set(nombreReal, subscription);
             suscripcionesRepartidores.set(nombreReal.toUpperCase(), subscription);
             
@@ -136,7 +138,6 @@ app.use((err, req, res, next) => {
 async function startup() {
     console.log('Iniciando el sistema...');
     try {
-        // Opcional: si tu config/db.js exporta una función initialize o un test de conexión rápido
         if (typeof db.initialize === 'function') {
             await db.initialize();
         }

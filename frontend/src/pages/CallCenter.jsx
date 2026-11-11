@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Cargando from '../components/Cargando'; // <--- Importamos la plantilla de carga
+import { API_URL } from '../config/api';
 
 const CallCenter = () => {
     const navigate = useNavigate();
@@ -40,8 +41,8 @@ const CallCenter = () => {
             try {
                 // Cargamos medicamentos, sucursales y garantizamos el tiempo mínimo en paralelo
                 const [resMed, resSuc] = await Promise.all([
-                    fetch('http://localhost:3000/api/inventario/medicamentos').then(res => res.json()).catch(() => ({ success: false })),
-                    fetch('http://localhost:3000/api/sucursales').then(res => res.json()).catch(() => ({ success: false })),
+                    fetch('' + API_URL + '/api/inventario/medicamentos').then(res => res.json()).catch(() => ({ success: false })),
+                    fetch('' + API_URL + '/api/sucursales').then(res => res.json()).catch(() => ({ success: false })),
                     tiempoMinimo
                 ]);
 
@@ -61,7 +62,7 @@ const CallCenter = () => {
         if (!nitBusqueda || orden.esCF) return;
         
         try {
-            const res = await fetch(`http://localhost:3000/api/pedidos/cliente/${nitBusqueda}`);
+            const res = await fetch(`' + API_URL + '/api/pedidos/cliente/${nitBusqueda}`);
             const data = await res.json();
             
             if (data.success && data.data) {
@@ -171,7 +172,7 @@ const CallCenter = () => {
         }
 
         try {
-            const res = await fetch('http://localhost:3000/api/pedidos/registrar', {
+            const res = await fetch('' + API_URL + '/api/pedidos/registrar', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

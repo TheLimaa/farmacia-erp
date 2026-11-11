@@ -1,5 +1,7 @@
+import { API_URL } from '../config/api';
+
 // URL base de tu backend local
-const API_URL = 'http://localhost:3000/api';
+const API_URL = '' + API_URL + '/api';
 
 export const checkProductStock = async (idMedicamento) => {
     try {

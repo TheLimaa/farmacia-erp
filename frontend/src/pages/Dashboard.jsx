@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Cargando from '../components/Cargando';
 import logoVita from '../assets/Vita+.svg';
+import { API_URL } from '../config/api';
 
 const Dashboard = () => {
     const navigate = useNavigate();
@@ -23,7 +24,7 @@ const Dashboard = () => {
 
             try {
                 const [res] = await Promise.all([
-                    usuarioBuscado ? fetch('http://localhost:3000/api/usuarios') : Promise.resolve(null),
+                    usuarioBuscado ? fetch('' + API_URL + '/api/usuarios') : Promise.resolve(null),
                     tiempoMinimo
                 ]);
 

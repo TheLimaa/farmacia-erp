@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Cargando from '../components/Cargando'; // <--- Importamos la plantilla de carga
+import { API_URL } from '../config/api';
 
 const RRHH = () => {
     const navigate = useNavigate();
@@ -28,8 +29,8 @@ const RRHH = () => {
             try {
                 // Ejecutamos las peticiones de empleados, sucursales y el tiempo mínimo en paralelo
                 const [resEmp, resSuc] = await Promise.all([
-                    fetch('http://localhost:3000/api/empleados').then(res => res.json()).catch(() => ({ success: false })),
-                    fetch('http://localhost:3000/api/sucursales').then(res => res.json()).catch(() => ({ success: false })),
+                    fetch('' + API_URL + '/api/empleados').then(res => res.json()).catch(() => ({ success: false })),
+                    fetch('' + API_URL + '/api/sucursales').then(res => res.json()).catch(() => ({ success: false })),
                     tiempoMinimo
                 ]);
 
@@ -47,7 +48,7 @@ const RRHH = () => {
 
     const cargarEmpleados = async () => {
         try {
-            const res = await fetch('http://localhost:3000/api/empleados'); 
+            const res = await fetch('' + API_URL + '/api/empleados'); 
             const data = await res.json();
             if (data.success) setEmpleados(data.data);
         } catch (error) {
@@ -57,7 +58,7 @@ const RRHH = () => {
 
     const cargarSucursales = async () => {
         try {
-            const res = await fetch('http://localhost:3000/api/sucursales');
+            const res = await fetch('' + API_URL + '/api/sucursales');
             const data = await res.json();
             if (data.success) setSucursales(data.data);
         } catch (error) {
@@ -111,8 +112,8 @@ const RRHH = () => {
         if (hayErrorValidacion) return;
 
         const url = editandoId 
-            ? `http://localhost:3000/api/empleados/${editandoId}`
-            : 'http://localhost:3000/api/empleados';
+            ? `' + API_URL + '/api/empleados/${editandoId}`
+            : '' + API_URL + '/api/empleados';
         const method = editandoId ? 'PUT' : 'POST';
 
         try {
@@ -139,7 +140,7 @@ const RRHH = () => {
     const eliminarEmpleado = async (id) => {
         if (!window.confirm(`¿Está seguro de eliminar al empleado #${id}?`)) return;
         try {
-            const res = await fetch(`http://localhost:3000/api/empleados/${id}`, { method: 'DELETE' });
+            const res = await fetch(`' + API_URL + '/api/empleados/${id}`, { method: 'DELETE' });
             const data = await res.json();
             if (data.success) {
                 setMensaje('✅ ' + data.message);

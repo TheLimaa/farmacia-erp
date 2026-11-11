@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { getTraslados } from '../services/logisticService';
 import Cargando from '../components/Cargando'; // <--- Importamos la plantilla de carga
 
+
 const Logistic = () => {
     const [traslados, setTraslados] = useState([]);
     const [cargando, setCargando] = useState(true); // <--- Estado de carga añadido

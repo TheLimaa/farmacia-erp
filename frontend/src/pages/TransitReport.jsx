@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Cargando from '../components/Cargando'; // <--- Importamos la plantilla de carga
+import { API_URL } from '../config/api';
 
 const TransitReport = () => {
     const navigate = useNavigate();
@@ -32,8 +33,8 @@ const TransitReport = () => {
             try {
                 // Cargamos medicamentos, sucursales, permisos y los 2 segundos en paralelo
                 const [resMed, resSuc] = await Promise.all([
-                    fetch('http://localhost:3000/api/inventario/medicamentos').then(res => res.json()).catch(() => ({ success: false })),
-                    fetch('http://localhost:3000/api/sucursales').then(res => res.json()).catch(() => ({ success: false })),
+                    fetch('' + API_URL + '/api/inventario/medicamentos').then(res => res.json()).catch(() => ({ success: false })),
+                    fetch('' + API_URL + '/api/sucursales').then(res => res.json()).catch(() => ({ success: false })),
                     tiempoMinimo
                 ]);
 
@@ -43,7 +44,7 @@ const TransitReport = () => {
                     setCatalogoSucursales(resSuc.data);
 
                     if (!esAdmin) {
-                        const resUser = await fetch('http://localhost:3000/api/usuarios').then(res => res.json()).catch(() => ({ success: false }));
+                        const resUser = await fetch('' + API_URL + '/api/usuarios').then(res => res.json()).catch(() => ({ success: false }));
                         if (resUser.success) {
                             const usuarioBuscado = (user.usuario || user.username || user.nombre || '').toString().toLowerCase();
                             const currentUser = resUser.data.find(u => {
@@ -96,7 +97,7 @@ const TransitReport = () => {
             if (filtros.id_sucursal) params.append('id_sucursal', filtros.id_sucursal);
             if (filtros.id_medicamento) params.append('id_medicamento', filtros.id_medicamento);
 
-            const res = await fetch(`http://localhost:3000/api/inventario/transito?${params.toString()}`);
+            const res = await fetch(`' + API_URL + '/api/inventario/transito?${params.toString()}`);
             const data = await res.json();
             if (data.success) {
                 setStockTransito(data.data);
@@ -108,7 +109,7 @@ const TransitReport = () => {
     const handleRecibir = async (id_lote) => {
         if(!window.confirm("¿Confirmas la recepción física de este lote en la sucursal?")) return;
         try {
-            const res = await fetch('http://localhost:3000/api/inventario/recibir', {
+            const res = await fetch('' + API_URL + '/api/inventario/recibir', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ id_lote })

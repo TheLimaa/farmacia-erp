@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getFinancialSummary, getCashFlow } from '../services/auditService';
 import Cargando from '../components/Cargando'; // <--- Importamos la plantilla de carga
+import { API_URL } from '../config/api';
 
 const Audit = () => {
     const navigate = useNavigate();
@@ -41,7 +42,7 @@ const Audit = () => {
                 if (!esAdmin) {
                     // Si es gerente, buscamos automáticamente su sucursal vinculada
                     try {
-                        const res = await fetch('http://localhost:3000/api/usuarios');
+                        const res = await fetch('' + API_URL + '/api/usuarios');
                         const data = await res.json();
                         if (data.success) {
                             const usuarioBuscado = (user.usuario || user.username || user.nombre || '').toString().toLowerCase();

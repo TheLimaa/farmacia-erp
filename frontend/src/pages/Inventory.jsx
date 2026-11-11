@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Cargando from '../components/Cargando'; // <--- Importamos la plantilla de carga
+import { API_URL } from '../config/api';
 
 const Inventory = () => {
     const navigate = useNavigate();
@@ -38,8 +39,8 @@ const Inventory = () => {
             try {
                 // Cargamos el catálogo, las sucursales y garantizamos los 2 segundos en paralelo
                 const [resMed, resSuc] = await Promise.all([
-                    fetch('http://localhost:3000/api/inventario/medicamentos').then(res => res.json()).catch(() => ({ success: false })),
-                    fetch('http://localhost:3000/api/sucursales').then(res => res.json()).catch(() => ({ success: false })),
+                    fetch('' + API_URL + '/api/inventario/medicamentos').then(res => res.json()).catch(() => ({ success: false })),
+                    fetch('' + API_URL + '/api/sucursales').then(res => res.json()).catch(() => ({ success: false })),
                     tiempoMinimo
                 ]);
 
@@ -63,7 +64,7 @@ const Inventory = () => {
 
     const cargarCatalogo = async () => {
         try {
-            const res = await fetch('http://localhost:3000/api/inventario/medicamentos');
+            const res = await fetch('' + API_URL + '/api/inventario/medicamentos');
             const data = await res.json();
             if (data.success) setCatalogo(data.data);
         } catch (error) { console.error('Error catálogo:', error); }
@@ -71,7 +72,7 @@ const Inventory = () => {
 
     const cargarSucursales = async () => {
         try {
-            const res = await fetch('http://localhost:3000/api/sucursales');
+            const res = await fetch('' + API_URL + '/api/sucursales');
             const data = await res.json();
             if (data.success) setCatalogoSucursales(data.data);
         } catch (error) { console.error('Error sucursales:', error); }
@@ -132,7 +133,7 @@ const Inventory = () => {
         e.preventDefault();
         setMensaje('');
         try {
-            const res = await fetch('http://localhost:3000/api/inventario/producto', { 
+            const res = await fetch('' + API_URL + '/api/inventario/producto', { 
                 method: 'POST', 
                 headers: { 'Content-Type': 'application/json' }, 
                 body: JSON.stringify(producto) 
@@ -197,7 +198,7 @@ const Inventory = () => {
 
         // 3. Enviar lote al backend
         try {
-            const res = await fetch('http://localhost:3000/api/inventario/stock', { 
+            const res = await fetch('' + API_URL + '/api/inventario/stock', { 
                 method: 'POST', 
                 headers: { 'Content-Type': 'application/json' }, 
                 body: JSON.stringify({
