@@ -27,7 +27,7 @@ const Usuarios = () => {
             try {
                 // Ejecutamos la petición y el tiempo mínimo en paralelo
                 const [res] = await Promise.all([
-                    fetch('' + API_URL + '/api/usuarios').then(r => r.json()).catch(() => ({ success: false })),
+                    fetch(`${API_URL}/api/usuarios`).then(r => r.json()).catch(() => ({ success: false })),
                     tiempoMinimo
                 ]);
 
@@ -46,7 +46,7 @@ const Usuarios = () => {
 
     const cargarUsuarios = async () => {
         try {
-            const res = await fetch('' + API_URL + '/api/usuarios');
+            const res = await fetch(`${API_URL}/api/usuarios`);
             const data = await res.json();
             if (data.success) setUsuarios(data.data);
         } catch (error) {
@@ -57,7 +57,7 @@ const Usuarios = () => {
     const buscarEmpleado = async () => {
         if (!idEmpleadoBusqueda) return;
         try {
-            const res = await fetch(`' + API_URL + '/api/usuarios/empleado/${idEmpleadoBusqueda}`);
+            const res = await fetch(`${API_URL}/api/usuarios/empleado/${idEmpleadoBusqueda}`);
             const data = await res.json();
             
             if (data.success && data.data) {
@@ -130,7 +130,7 @@ const Usuarios = () => {
     const eliminarUsuario = async (id, user) => {
         if (!window.confirm(`¿Está seguro de eliminar las credenciales de "${user}"?`)) return;
         try {
-            const res = await fetch(`' + API_URL + '/api/usuarios/${id}`, { method: 'DELETE' });
+            const res = await fetch(`${API_URL}/api/usuarios/${id}`, { method: 'DELETE' });
             const data = await res.json();
             if (data.success) {
                 setMensaje('✅ ' + data.message);
