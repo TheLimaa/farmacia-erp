@@ -40,7 +40,6 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
-app.options('*', cors()); // Manejo explícito de peticiones preflight OPTIONS
 
 app.use(express.json());
 
