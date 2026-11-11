@@ -41,8 +41,8 @@ const CallCenter = () => {
             try {
                 // Cargamos medicamentos, sucursales y garantizamos el tiempo mínimo en paralelo
                 const [resMed, resSuc] = await Promise.all([
-                    fetch('' + API_URL + '/api/inventario/medicamentos').then(res => res.json()).catch(() => ({ success: false })),
-                    fetch('' + API_URL + '/api/sucursales').then(res => res.json()).catch(() => ({ success: false })),
+                    fetch(`${API_URL}/api/inventario/medicamentos`).then(res => res.json()).catch(() => ({ success: false })),
+                    fetch(`${API_URL}/api/sucursales`).then(res => res.json()).catch(() => ({ success: false })),
                     tiempoMinimo
                 ]);
 
@@ -62,7 +62,7 @@ const CallCenter = () => {
         if (!nitBusqueda || orden.esCF) return;
         
         try {
-            const res = await fetch(`' + API_URL + '/api/pedidos/cliente/${nitBusqueda}`);
+            const res = await fetch(`${API_URL}/api/pedidos/cliente/${nitBusqueda}`);
             const data = await res.json();
             
             if (data.success && data.data) {
@@ -172,7 +172,7 @@ const CallCenter = () => {
         }
 
         try {
-            const res = await fetch('' + API_URL + '/api/pedidos/registrar', {
+            const res = await fetch(`${API_URL}/api/pedidos/registrar`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

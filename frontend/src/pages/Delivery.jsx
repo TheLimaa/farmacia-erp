@@ -36,7 +36,7 @@ const Delivery = () => {
                 let sucursalDetectada = '';
                 
                 if (!esAdmin) {
-                    const resUser = await fetch('' + API_URL + '/api/usuarios').then(res => res.json()).catch(() => ({ success: false }));
+                    const resUser = await fetch(`${API_URL}/api/usuarios`).then(res => res.json()).catch(() => ({ success: false }));
                     if (resUser.success) {
                         const currentUser = resUser.data.find(u => 
                             (u.USERNAME || u.username) === user.nombre || 
@@ -50,7 +50,7 @@ const Delivery = () => {
                 }
 
                 const [resPedidos] = await Promise.all([
-                    fetch('' + API_URL + '/api/pedidos/todos').then(res => res.json()).catch(() => ({ success: false })),
+                    fetch(`${API_URL}/api/pedidos/todos`).then(res => res.json()).catch(() => ({ success: false })),
                     tiempoMinimo
                 ]);
 
@@ -109,7 +109,7 @@ const Delivery = () => {
         if (!window.confirm(`¿Confirmar la entrega exitosa del pedido #${idPedido}?`)) return;
         
         try {
-            const res = await fetch(`' + API_URL + '/api/pedidos/${idPedido}/entregar`, { method: 'PUT' });
+            const res = await fetch(`${API_URL}/api/pedidos/${idPedido}/entregar`, { method: 'PUT' });
             const data = await res.json();
             
             if (data.success) {
@@ -131,7 +131,7 @@ const Delivery = () => {
         if (!window.confirm(`¿Está seguro de cancelar el pedido #${idPedido}? El stock será devuelto al inventario.`)) return;
         
         try {
-            const res = await fetch(`' + API_URL + '/api/pedidos/${idPedido}/cancelar`, { method: 'PUT' });
+            const res = await fetch(`${API_URL}/api/pedidos/${idPedido}/cancelar`, { method: 'PUT' });
             const data = await res.json();
             
             if (data.success) {

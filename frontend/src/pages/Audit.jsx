@@ -25,22 +25,19 @@ const Audit = () => {
 
     useEffect(() => {
         const cargarDatosAuditoria = async () => {
-            // Creamos una promesa para el tiempo mínimo de carga (1 segundo = 1000ms)
             const tiempoMinimo = new Promise(resolve => setTimeout(resolve, 1000));
 
             try {
-                // Ejecutamos las peticiones de servicios y el temporizador en paralelo
                 const [finData, flowData] = await Promise.all([
                     getFinancialSummary(),
                     getCashFlow(),
                     tiempoMinimo
                 ]);
 
-                setFinancialsOriginal(finData);
-                setCashFlowOriginal(flowData);
+                setFinancialsOriginal(finData || []);
+                setCashFlowOriginal(flowData || []);
 
                 if (!esAdmin) {
-                    // Si es gerente, buscamos automáticamente su sucursal vinculada
                     try {
                         const res = await fetch(`${API_URL}/api/usuarios`);
                         const data = await res.json();
@@ -54,7 +51,7 @@ const Audit = () => {
                             if (currentUser) {
                                 const nombreSuc = currentUser.SUCURSAL || currentUser.sucursal || currentUser.NOMBRE_UBICACION || '';
                                 setGerenteSucursalNombre(nombreSuc);
-                                setSucursalSeleccionada(nombreSuc); // Forzar selección del gerente a su tienda
+                                setSucursalSeleccionada(nombreSuc);
                             }
                         }
                     } catch (error) {
@@ -71,10 +68,9 @@ const Audit = () => {
         cargarDatosAuditoria();
     }, [esAdmin]);
 
-    // Efecto para aplicar el filtro cada vez que cambia la sucursal seleccionada o los datos originales
+    // Efecto para aplicar el filtro
     useEffect(() => {
         if (!esAdmin && gerenteSucursalNombre) {
-            // Restricción estricta para Gerentes: Forzar siempre su sucursal
             const filteredFinancials = financialsOriginal.filter(
                 (item) => item.NOMBRE_UBICACION === gerenteSucursalNombre
             );
@@ -85,7 +81,6 @@ const Audit = () => {
             );
             setCashFlow(filteredCashFlow);
         } else if (esAdmin) {
-            // Lógica para Administradores
             if (sucursalSeleccionada === '') {
                 setFinancials(financialsOriginal);
                 setCashFlow(cashFlowOriginal);
@@ -103,17 +98,15 @@ const Audit = () => {
         }
     }, [sucursalSeleccionada, financialsOriginal, cashFlowOriginal, esAdmin, gerenteSucursalNombre]);
 
-    // Extraer lista de sucursales únicas para el dropdown (Solo Admin)
     const sucursalesUnicas = [...new Set(financialsOriginal.map(item => item.NOMBRE_UBICACION))];
 
-    // Cálculos dinámicos basados en la información filtrada
-    const totalCaja = financials.reduce((sum, item) => sum + (item.SALDO_CAJA || 0), 0);
-    const totalPlanilla = financials.reduce((sum, item) => sum + (item.GASTO_PLANILLA || 0), 0);
-    const totalActivos = financials.reduce((sum, item) => sum + (item.VALOR_ACTIVOS_FIJOS || 0), 0);
+    // Cálculos dinámicos blindados contra nulos
+    const totalCaja = financials.reduce((sum, item) => sum + Number(item.SALDO_CAJA || 0), 0);
+    const totalPlanilla = financials.reduce((sum, item) => sum + Number(item.GASTO_PLANILLA || 0), 0);
+    const totalActivos = financials.reduce((sum, item) => sum + Number(item.VALOR_ACTIVOS_FIJOS || 0), 0);
 
     const tituloSucursalActiva = esAdmin ? sucursalSeleccionada : gerenteSucursalNombre;
 
-    // Si está cargando, retornamos la plantilla reutilizable con el mensaje adecuado
     if (loading) {
         return <Cargando mensaje="Cargando..." />;
     }
@@ -133,7 +126,6 @@ const Audit = () => {
             </div>
 
             <>
-                {/* SECCIÓN DEL FILTRO: SOLO SE MUESTRA SI ES ADMINISTRADOR */}
                 {esAdmin && (
                     <div className="audit-filter-card">
                         <div className="filter-title">Filtrar Auditoría:</div>
@@ -153,7 +145,6 @@ const Audit = () => {
                     </div>
                 )}
 
-                {/* TARJETAS DE TOTALES */}
                 <div className="totales-grid">
                     <div className="card-total caja">
                         <div className="card-total-label">Total Efectivo en Caja{tituloSucursalActiva ? '' : 's'}</div>
@@ -169,7 +160,6 @@ const Audit = () => {
                     </div>
                 </div>
 
-                {/* TABLA DE SALDOS */}
                 <div className="audit-card-section">
                     <h3 className="audit-section-title">
                         {tituloSucursalActiva ? `Saldos Actuales: ${tituloSucursalActiva}` : 'Saldos Actuales por Sucursal'}
@@ -187,12 +177,12 @@ const Audit = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {financials.map((item) => (
-                                    <tr key={item.ID_SUCURSAL}>
-                                        <td className="td-sucursal">{item.NOMBRE_UBICACION}</td>
-                                        <td className="align-right td-caja">Q {item.SALDO_CAJA.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
-                                        <td className="align-right td-planilla">Q {item.GASTO_PLANILLA.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
-                                        <td className="align-right td-activos">Q {item.VALOR_ACTIVOS_FIJOS.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+                                {financials.map((item, index) => (
+                                    <tr key={item.ID_SUCURSAL || index}>
+                                        <td className="td-sucursal">{item.NOMBRE_UBICACION || 'N/D'}</td>
+                                        <td className="align-right td-caja">Q {Number(item.SALDO_CAJA || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+                                        <td className="align-right td-planilla">Q {Number(item.GASTO_PLANILLA || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+                                        <td className="align-right td-activos">Q {Number(item.VALOR_ACTIVOS_FIJOS || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -200,7 +190,6 @@ const Audit = () => {
                     )}
                 </div>
 
-                {/* TABLA DE FLUJO DE EFECTIVO */}
                 <div className="audit-card-section sin-margen-inferior">
                     <h3 className="audit-section-title">
                         Libro Mayor: Historial de Flujo de Efectivo {tituloSucursalActiva && `(${tituloSucursalActiva})`}
@@ -219,20 +208,21 @@ const Audit = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {cashFlow.map((mov) => {
+                                {cashFlow.map((mov, index) => {
                                     const esIngreso = mov.TIPO_MOVIMIENTO === 'INGRESO';
+                                    const montoSeguro = Number(mov.MONTO || 0);
                                     return (
-                                        <tr key={mov.ID_MOVIMIENTO}>
-                                            <td className="td-fecha">{mov.FECHA_HORA}</td>
-                                            <td className="td-concepto" style={{ fontWeight: 'bold' }}>{mov.SUCURSAL}</td>
-                                            <td>{mov.CONCEPTO}</td>
+                                        <tr key={mov.ID_MOVIMIENTO || index}>
+                                            <td className="td-fecha">{mov.FECHA_HORA || 'N/D'}</td>
+                                            <td className="td-concepto" style={{ fontWeight: 'bold' }}>{mov.SUCURSAL || 'N/D'}</td>
+                                            <td>{mov.CONCEPTO || 'N/D'}</td>
                                             <td>
                                                 <span className={`badge-movimiento ${esIngreso ? 'ingreso' : 'egreso'}`}>
-                                                    {mov.TIPO_MOVIMIENTO}
+                                                    {mov.TIPO_MOVIMIENTO || 'N/D'}
                                                 </span>
                                             </td>
                                             <td className={`align-right ${esIngreso ? 'monto-ingreso' : 'monto-egreso'}`} style={{ fontWeight: 'bold' }}>
-                                                {esIngreso ? '+' : '-'} Q {mov.MONTO.toLocaleString('en-US', {minimumFractionDigits: 2})}
+                                                {esIngreso ? '+' : '-'} Q {montoSeguro.toLocaleString('en-US', {minimumFractionDigits: 2})}
                                             </td>
                                         </tr>
                                     );

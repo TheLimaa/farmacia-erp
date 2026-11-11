@@ -76,7 +76,7 @@ const RepartidorPortal = () => {
                 });
 
                 // 5. Enviar la suscripción al Backend vinculada al repartidor
-                await fetch('' + API_URL + '/api/notificaciones/suscribir', {
+                await fetch(`${API_URL}/api/notificaciones/suscribir`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -107,8 +107,8 @@ const RepartidorPortal = () => {
 
             // Ejecutamos las peticiones y el tiempo mínimo en paralelo si se muestra el loader inicial
             const [resUser, resPedidos] = await Promise.all([
-                fetch('' + API_URL + '/api/usuarios').then(res => res.json()).catch(() => ({ success: false })),
-                fetch('' + API_URL + '/api/pedidos/todos').then(res => res.json()).catch(() => ({ success: false })),
+                fetch(`${API_URL}/api/usuarios`).then(res => res.json()).catch(() => ({ success: false })),
+                fetch(`${API_URL}/api/pedidos/todos`).then(res => res.json()).catch(() => ({ success: false })),
                 ...(mostrarLoader ? [tiempoMinimo] : [])
             ]);
 
@@ -145,14 +145,14 @@ const RepartidorPortal = () => {
 
     const cambiarEstadoPedido = async (idPedido, nuevoEstado) => {
         try {
-            await fetch(`' + API_URL + '/api/pedidos/${idPedido}/estado`, {
+            await fetch(`${API_URL}/api/pedidos/${idPedido}/estado`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ estado: nuevoEstado })
             });
             
             if (nuevoEstado === 'ENTREGADO') {
-                await fetch(`' + API_URL + '/api/pedidos/${idPedido}/entregar`, { method: 'PUT' });
+                await fetch(`${API_URL}/api/pedidos/${idPedido}/entregar`, { method: 'PUT' });
             }
 
             setMensaje(`✅ Pedido #${idPedido} actualizado a: ${nuevoEstado}`);
@@ -173,7 +173,7 @@ const RepartidorPortal = () => {
         }
 
         try {
-            const res = await fetch(`' + API_URL + '/api/pedidos/${idPedido}/cancelar`, {
+            const res = await fetch(`${API_URL}/api/pedidos/${idPedido}/cancelar`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -194,7 +194,7 @@ const RepartidorPortal = () => {
 
     const verImprimirFactura = async (p) => {
         try {
-            const res = await fetch(`' + API_URL + '/api/pedidos/${p.ID_PEDIDO}/generar-factura`, {
+            const res = await fetch(`${API_URL}/api/pedidos/${p.ID_PEDIDO}/generar-factura`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -231,7 +231,6 @@ const RepartidorPortal = () => {
             });
 
             const totalGeneral = Number(fact.total || p.TOTAL || 0);
-            // Si el objeto fact trae el costo_envio explícito se usa, si no, se calcula la diferencia
             let costoEnvio = Number(fact.costo_envio ?? fact.envio ?? p.COSTO_ENVIO ?? (totalGeneral - subtotalProductos));
             if (costoEnvio < 0) costoEnvio = 0;
 
@@ -339,7 +338,6 @@ const RepartidorPortal = () => {
         return mostrarEntregados ? (esEntregado || esCancelado) : (!esEntregado && !esCancelado);
     });
 
-    // Si está cargando inicialmente, mostramos la plantilla reutilizable de carga
     if (loading) {
         return <Cargando mensaje="Cargando..." />;
     }
