@@ -68,7 +68,7 @@ app.post('/api/notificaciones/suscribir', async (req, res) => {
         
         if (result.rows.length > 0) {
             // PostgreSQL devuelve los nombres de columnas en minúsculas por defecto
-            const nombreReal = (result.rows[0].nombre_completo || result.rows[0].NOMBRE_COMPLETO).trim();
+            const nombreReal = (result.rows[0].nombre_completo || '').trim();
             
             // Guardamos también el nombre real en el mapa
             suscripcionesRepartidores.set(nombreReal, subscription);

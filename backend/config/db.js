@@ -1,21 +1,30 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
-// Configuración del pool de conexiones para PostgreSQL / Supabase
-const pool = new Pool({
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT || 5432,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    ssl: {
-        rejectUnauthorized: false // Obligatorio para conexiones seguras a la nube (Supabase)
-    },
-    max: 10,       // Máximo de conexiones en el pool
-    min: 2,        // Mínimo de conexiones inactivas
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 2000,
-});
+// Si existe DATABASE_URL (en Render), la usamos. Si no, armamos el objeto con variables individuales (en local).
+const connectionConfig = process.env.DATABASE_URL 
+    ? {
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false },
+        max: 10,
+        min: 2,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 5000,
+      }
+    : {
+        host: process.env.DB_HOST,
+        port: process.env.DB_PORT || 5432,
+        user: process.env.DB_USER,
+        password: process.env.DB_PASSWORD,
+        database: process.env.DB_NAME,
+        ssl: { rejectUnauthorized: false },
+        max: 10,
+        min: 2,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 5000,
+      };
+
+const pool = new Pool(connectionConfig);
 
 // Función para probar e inicializar la conexión al arrancar el servidor
 async function initialize() {
