@@ -25,7 +25,7 @@ const Audit = () => {
 
     useEffect(() => {
         const cargarDatosAuditoria = async () => {
-            // Creamos una promesa para el tiempo mínimo de carga (2 segundos = 2000ms)
+            // Creamos una promesa para el tiempo mínimo de carga (1 segundo = 1000ms)
             const tiempoMinimo = new Promise(resolve => setTimeout(resolve, 1000));
 
             try {
@@ -42,7 +42,7 @@ const Audit = () => {
                 if (!esAdmin) {
                     // Si es gerente, buscamos automáticamente su sucursal vinculada
                     try {
-                        const res = await fetch('' + API_URL + '/api/usuarios');
+                        const res = await fetch(`${API_URL}/api/usuarios`);
                         const data = await res.json();
                         if (data.success) {
                             const usuarioBuscado = (user.usuario || user.username || user.nombre || '').toString().toLowerCase();

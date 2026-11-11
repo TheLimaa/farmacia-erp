@@ -24,8 +24,8 @@ const StockReport = () => {
 
             try {
                 const [resMed, resSuc] = await Promise.all([
-                    fetch('' + API_URL + '/api/inventario/medicamentos').then(res => res.json()).catch(() => ({ success: false })),
-                    fetch('' + API_URL + '/api/sucursales').then(res => res.json()).catch(() => ({ success: false })),
+                    fetch(`${API_URL}/api/inventario/medicamentos`).then(res => res.json()).catch(() => ({ success: false })),
+                    fetch(`${API_URL}/api/sucursales`).then(res => res.json()).catch(() => ({ success: false })),
                     tiempoMinimo
                 ]);
 
@@ -68,7 +68,7 @@ const StockReport = () => {
             if (filtros.id_sucursal) params.append('id_sucursal', filtros.id_sucursal);
             if (filtros.id_medicamento) params.append('id_medicamento', filtros.id_medicamento);
 
-            const res = await fetch(`' + API_URL + '/api/inventario/general?${params.toString()}`);
+            const res = await fetch(`${API_URL}/api/inventario/general?${params.toString()}`);
             const data = await res.json();
             
             if (data.success) {
