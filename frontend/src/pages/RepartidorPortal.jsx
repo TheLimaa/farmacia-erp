@@ -130,7 +130,7 @@ const RepartidorPortal = () => {
             
             if (resPedidos.success) {
                 const pedidosTienda = resPedidos.data.filter(p => {
-                    const sucursalPedido = p.SUCURSAL_DESPACHO || p.sucursal_despacho || '';
+                    const sucursalPedido = p.SUCURSAL_DESPACHO || p.sucursal_despacho || p.sucursal || '';
                     if (sucursalAsignada && sucursalPedido !== sucursalAsignada) return false;
                     return true;
                 });
@@ -158,10 +158,10 @@ const RepartidorPortal = () => {
             setMensaje(`✅ Pedido #${idPedido} actualizado a: ${nuevoEstado}`);
             setTimeout(() => setMensaje(''), 4000);
             
-            setPedidos(prev => prev.map(p => p.ID_PEDIDO === idPedido ? { ...p, ESTADO_PEDIDO: nuevoEstado } : p));
+            setPedidos(prev => prev.map(p => (p.ID_PEDIDO || p.id_pedido) === idPedido ? { ...p, ESTADO_PEDIDO: nuevoEstado, estado_pedido: nuevoEstado } : p));
         } catch (error) {
             console.error('Error al cambiar estado:', error);
-            setPedidos(prev => prev.map(p => p.ID_PEDIDO === idPedido ? { ...p, ESTADO_PEDIDO: nuevoEstado } : p));
+            setPedidos(prev => prev.map(p => (p.ID_PEDIDO || p.id_pedido) === idPedido ? { ...p, ESTADO_PEDIDO: nuevoEstado, estado_pedido: nuevoEstado } : p));
             setMensaje(`✅ Pedido #${idPedido} actualizado localmente a: ${nuevoEstado}`);
             setTimeout(() => setMensaje(''), 4000);
         }
@@ -193,8 +193,11 @@ const RepartidorPortal = () => {
     };
 
     const verImprimirFactura = async (p) => {
+        const idPed = p.ID_PEDIDO || p.id_pedido;
+        const totalPed = Number(p.TOTAL || p.total || 0);
+
         try {
-            const res = await fetch(`${API_URL}/api/pedidos/${p.ID_PEDIDO}/generar-factura`, {
+            const res = await fetch(`${API_URL}/api/pedidos/${idPed}/generar-factura`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -230,8 +233,8 @@ const RepartidorPortal = () => {
                 `;
             });
 
-            const totalGeneral = Number(fact.total || p.TOTAL || 0);
-            let costoEnvio = Number(fact.costo_envio ?? fact.envio ?? p.COSTO_ENVIO ?? (totalGeneral - subtotalProductos));
+            const totalGeneral = Number(fact.total || totalPed);
+            let costoEnvio = Number(fact.costo_envio ?? fact.envio ?? p.COSTO_ENVIO ?? p.costo_envio ?? (totalGeneral - subtotalProductos));
             if (costoEnvio < 0) costoEnvio = 0;
 
             const fechaLegible = new Date(fact.fecha_factura || Date.now()).toLocaleString();
@@ -332,7 +335,7 @@ const RepartidorPortal = () => {
     };
 
     const pedidosFiltrados = pedidos.filter(p => {
-        const estado = (p.ESTADO_PEDIDO || '').toUpperCase();
+        const estado = (p.ESTADO_PEDIDO || p.estado_pedido || '').toUpperCase();
         const esEntregado = estado === 'ENTREGADO';
         const esCancelado = estado === 'CANCELADO';
         return mostrarEntregados ? (esEntregado || esCancelado) : (!esEntregado && !esCancelado);
@@ -391,7 +394,8 @@ const RepartidorPortal = () => {
                 {pedidosFiltrados.length > 0 ? (
                     <div className="repartidor-pedidos-list">
                         {pedidosFiltrados.map(p => {
-                            const estadoActual = (p.ESTADO_PEDIDO || 'PENDIENTE').toUpperCase();
+                            const idPedidoReal = p.ID_PEDIDO || p.id_pedido;
+                            const estadoActual = (p.ESTADO_PEDIDO || p.estado_pedido || 'PENDIENTE').toUpperCase();
                             const esEntregado = estadoActual === 'ENTREGADO';
                             const esCancelado = estadoActual === 'CANCELADO';
                             const bloqueado = esEntregado || esCancelado;
@@ -401,21 +405,27 @@ const RepartidorPortal = () => {
                             else if (esCancelado) claseEstadoBadge = 'cancelado';
                             else if (estadoActual === 'EN RUTA') claseEstadoBadge = 'en-ruta';
                             
+                            const clienteReal = p.CLIENTE || p.cliente || 'Sin Cliente';
+                            const direccionReal = p.DIRECCION || p.direccion || 'Sin Dirección';
+                            const sucursalReal = p.SUCURSAL_DESPACHO || p.sucursal_despacho || p.sucursal || 'Sin Tienda';
+                            const pagoReal = p.METODO_PAGO_ACORDADO || p.metodo_pago_acordado || p.metodo_pago || 'EFECTIVO';
+                            const totalReal = Number(p.TOTAL || p.total || 0);
+
                             return (
-                                <div key={p.ID_PEDIDO} className={`repartidor-card-pedido ${bloqueado ? 'bloqueado' : ''}`}>
+                                <div key={idPedidoReal} className={`repartidor-card-pedido ${bloqueado ? 'bloqueado' : ''}`}>
                                     
                                     <div className="repartidor-card-header">
-                                        <span className="repartidor-pedido-id">Pedido #${p.ID_PEDIDO}</span>
+                                        <span className="repartidor-pedido-id">Pedido #{idPedidoReal}</span>
                                         <span className={`badge-estado-pedido ${claseEstadoBadge}`}>
                                             {estadoActual}
                                         </span>
                                     </div>
 
                                     <div className="repartidor-pedido-detalles">
-                                        <div><strong className="repartidor-label-info">Cliente:</strong> <span className="repartidor-valor-cliente">{p.CLIENTE}</span></div>
-                                        <div><strong className="repartidor-label-info">Dirección:</strong> <span className="repartidor-valor-direccion">{p.DIRECCION}</span></div>
-                                        <div><strong className="repartidor-label-info">Tienda Origen:</strong> <span className="repartidor-valor-tienda">{p.SUCURSAL_DESPACHO}</span></div>
-                                        <div><strong className="repartidor-label-info">Pago:</strong> {p.METODO_PAGO_ACORDADO} — <strong className="repartidor-valor-total">Q {(p.TOTAL || 0).toFixed(2)}</strong></div>
+                                        <div><strong className="repartidor-label-info">Cliente:</strong> <span className="repartidor-valor-cliente">{clienteReal}</span></div>
+                                        <div><strong className="repartidor-label-info">Dirección:</strong> <span className="repartidor-valor-direccion">{direccionReal}</span></div>
+                                        <div><strong className="repartidor-label-info">Tienda Origen:</strong> <span className="repartidor-valor-tienda">{sucursalReal}</span></div>
+                                        <div><strong className="repartidor-label-info">Pago:</strong> {pagoReal} — <strong className="repartidor-valor-total">Q {totalReal.toFixed(2)}</strong></div>
                                     </div>
 
                                     <div className="repartidor-acciones-box">
@@ -424,21 +434,21 @@ const RepartidorPortal = () => {
                                         </div>
                                         <div className="repartidor-botones-estado-row">
                                             <button 
-                                                onClick={() => cambiarEstadoPedido(p.ID_PEDIDO, 'CARGADO EN TIENDA')}
+                                                onClick={() => cambiarEstadoPedido(idPedidoReal, 'CARGADO EN TIENDA')}
                                                 disabled={bloqueado}
                                                 className={`btn-estado-progreso btn-cargado ${estadoActual === 'CARGADO EN TIENDA' ? 'activo' : 'inactivo'}`}
                                             >
                                                 📦 Cargado
                                             </button>
                                             <button 
-                                                onClick={() => cambiarEstadoPedido(p.ID_PEDIDO, 'EN RUTA')}
+                                                onClick={() => cambiarEstadoPedido(idPedidoReal, 'EN RUTA')}
                                                 disabled={bloqueado}
                                                 className={`btn-estado-progreso btn-en-ruta ${estadoActual === 'EN RUTA' ? 'activo' : 'inactivo'}`}
                                             >
                                                 🛵 En Ruta
                                             </button>
                                             <button 
-                                                onClick={() => cambiarEstadoPedido(p.ID_PEDIDO, 'ENTREGADO')}
+                                                onClick={() => cambiarEstadoPedido(idPedidoReal, 'ENTREGADO')}
                                                 disabled={bloqueado}
                                                 className={`btn-estado-progreso btn-entregado ${estadoActual === 'ENTREGADO' ? 'activo' : 'inactivo'}`}
                                             >
@@ -448,7 +458,7 @@ const RepartidorPortal = () => {
 
                                         {!bloqueado && (
                                             <button 
-                                                onClick={() => cancelarPedido(p.ID_PEDIDO)}
+                                                onClick={() => cancelarPedido(idPedidoReal)}
                                                 className="btn-cancelar-pedido-rep"
                                             >
                                                 ❌ Cancelar Pedido y Retornar Stock
