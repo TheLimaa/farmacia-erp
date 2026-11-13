@@ -10,10 +10,18 @@ const Login = () => {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [cargando, setCargando] = useState(false);
+    
+    // Estados para el flujo de cambio obligatorio de contraseña
+    const [requiereCambio, setRequiereCambio] = useState(false);
+    const [idUsuarioTemp, setIdUsuarioTemp] = useState(null);
+    const [nuevaPassword, setNuevaPassword] = useState('');
+    const [confirmarPassword, setConfirmarPassword] = useState('');
+    const [verPassword, setVerPassword] = useState(false);
+
     const { login } = useAuth();
     const navigate = useNavigate();
 
-    // Valida las credenciales del usuario enviándolas al servidor y redirige según su rol
+    // Valida las credenciales del usuario enviándolas al servidor
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
@@ -23,7 +31,7 @@ const Login = () => {
 
         try {
             const [response] = await Promise.all([
-                fetch('' + API_URL + '/api/auth/login', {
+                fetch(`${API_URL}/api/auth/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, password })
@@ -34,14 +42,22 @@ const Login = () => {
             const data = await response.json();
 
             if (response.ok && data.success) {
-                localStorage.setItem('user', JSON.stringify(data.usuario));
-                login(data.token, data.usuario);
-                
-                const rolUsuario = (data.usuario?.rol || '').toUpperCase();
-                if (rolUsuario === 'REPARTIDOR') {
-                    navigate('/repartidor');
+                // Verificamos si el usuario necesita cambiar su contraseña temporal
+                if (data.requiere_cambio_password) {
+                    setCargando(false);
+                    setIdUsuarioTemp(data.usuario.id_usuario);
+                    setRequiereCambio(true); // Activa la vista del formulario de cambio obligatorio
                 } else {
-                    navigate('/dashboard');
+                    // Flujo normal de inicio de sesión
+                    localStorage.setItem('user', JSON.stringify(data.usuario));
+                    login(data.token, data.usuario);
+                    
+                    const rolUsuario = (data.usuario?.rol || '').toUpperCase();
+                    if (rolUsuario === 'REPARTIDOR') {
+                        navigate('/repartidor');
+                    } else {
+                        navigate('/dashboard');
+                    }
                 }
             } else {
                 setError(data.message || 'Credenciales inválidas');
@@ -53,9 +69,52 @@ const Login = () => {
         }
     };
 
-    // Muestra la pantalla de carga mientras se procesa el inicio de sesión
+    // Maneja el envío de la nueva contraseña obligatoria
+    const handleCambioPasswordForzado = async (e) => {
+        e.preventDefault();
+        if (nuevaPassword !== confirmarPassword) {
+            setError('Las contraseñas no coinciden.');
+            return;
+        }
+
+        if (nuevaPassword.length < 6) {
+            setError('La nueva contraseña debe tener al menos 6 caracteres.');
+            return;
+        }
+
+        setCargando(true);
+        setError('');
+
+        try {
+            const res = await fetch(`${API_URL}/api/usuarios/${idUsuarioTemp}/password`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password: nuevaPassword })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                alert('Contraseña actualizada con éxito. Por favor, inicia sesión con tu nueva clave.');
+                // Se reinicia el estado para que vuelva al login normal
+                setRequiereCambio(false);
+                setPassword('');
+                setNuevaPassword('');
+                setConfirmarPassword('');
+                setIdUsuarioTemp(null);
+                setCargando(false);
+            } else {
+                setError(data.message || 'Error al actualizar la contraseña.');
+                setCargando(false);
+            }
+        } catch (error) {
+            setError('Error de conexión al actualizar la contraseña.');
+            setCargando(false);
+        }
+    };
+
+    // Muestra la pantalla de carga mientras se procesa
     if (cargando) {
-        return <Cargando mensaje="Iniciando sesión..." />;
+        return <Cargando mensaje={requiereCambio ? "Actualizando contraseña..." : "Iniciando sesión..."} />;
     }
 
     return (
@@ -75,35 +134,86 @@ const Login = () => {
 
                 {error && <div className="login-error-message">{error}</div>}
                 
-                <form onSubmit={handleSubmit} className="login-form">
-                    <div className="login-field-group">
-                        <label className="login-label">Usuario</label>
-                        <input 
-                            type="text" 
-                            placeholder="Ingrese su usuario" 
-                            value={username} 
-                            onChange={(e) => setUsername(e.target.value.toUpperCase())} 
-                            style={{ textTransform: 'uppercase' }}
-                            required 
-                            className="login-input"
-                        />
-                    </div>
-                    <div className="login-field-group">
-                        <label className="login-label">Contraseña</label>
-                        <input 
-                            type="password" 
-                            placeholder="••••••••" 
-                            value={password} 
-                            onChange={(e) => setPassword(e.target.value)} 
-                            required 
-                            className="login-input"
-                        />
-                    </div>
+                {/* Si requiere cambio de contraseña, mostramos este formulario especial */}
+                {requiereCambio ? (
+                    <form onSubmit={handleCambioPasswordForzado} className="login-form">
+                        <div style={{ marginBottom: '15px', textAlign: 'center' }}>
+                            <h3 style={{ color: '#d9534f', fontSize: '1.1rem' }}>⚠️ Cambio de Contraseña Obligatorio</h3>
+                            <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '5px' }}>
+                                Estás ingresando con una contraseña temporal. Por seguridad, debes establecer una nueva contraseña personal antes de continuar.
+                            </p>
+                        </div>
 
-                    <button type="submit" className="login-submit-btn">
-                        Iniciar Sesión
-                    </button>
-                </form>
+                        <div className="login-field-group">
+                            <label className="login-label">Nueva Contraseña</label>
+                            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                <input 
+                                    type={verPassword ? "text" : "password"} 
+                                    placeholder="Nueva contraseña" 
+                                    value={nuevaPassword} 
+                                    onChange={(e) => setNuevaPassword(e.target.value)} 
+                                    required 
+                                    className="login-input"
+                                    style={{ width: '100%', paddingRight: '40px' }}
+                                />
+                                <button 
+                                    type="button" 
+                                    onClick={() => setVerPassword(!verPassword)} 
+                                    style={{ position: 'absolute', right: '10px', background: 'none', border: 'none', cursor: 'pointer' }}
+                                >
+                                    {verPassword ? "👁️‍🗨️" : "👁️"}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="login-field-group">
+                            <label className="login-label">Confirmar Nueva Contraseña</label>
+                            <input 
+                                type="password" 
+                                placeholder="Repite la contraseña" 
+                                value={confirmarPassword} 
+                                onChange={(e) => setConfirmarPassword(e.target.value)} 
+                                required 
+                                className="login-input"
+                            />
+                        </div>
+
+                        <button type="submit" className="login-submit-btn" style={{ background: '#0275d8' }}>
+                            Guardar y Continuar
+                        </button>
+                    </form>
+                ) : (
+                    /* Formulario de Login normal */
+                    <form onSubmit={handleSubmit} className="login-form">
+                        <div className="login-field-group">
+                            <label className="login-label">Usuario</label>
+                            <input 
+                                type="text" 
+                                placeholder="Ingrese su usuario" 
+                                value={username} 
+                                onChange={(e) => setUsername(e.target.value.toUpperCase())} 
+                                style={{ textTransform: 'uppercase' }}
+                                required 
+                                className="login-input"
+                            />
+                        </div>
+                        <div className="login-field-group">
+                            <label className="login-label">Contraseña</label>
+                            <input 
+                                type="password" 
+                                placeholder="••••••••" 
+                                value={password} 
+                                onChange={(e) => setPassword(e.target.value)} 
+                                required 
+                                className="login-input"
+                            />
+                        </div>
+
+                        <button type="submit" className="login-submit-btn">
+                            Iniciar Sesión
+                        </button>
+                    </form>
+                )}
             </div>
         </div>
     );

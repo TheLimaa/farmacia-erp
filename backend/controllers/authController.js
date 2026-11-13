@@ -32,10 +32,16 @@ const login = async (req, res) => {
             { expiresIn: '8h' }
         );
 
+        // Se incluye requiere_cambio_password en la respuesta para que el frontend sepa si debe bloquear o redirigir
         res.status(200).json({ 
             success: true, 
             token, 
-            usuario: { nombre: user.nombre_usuario, rol: user.rol } 
+            requiere_cambio_password: user.requiere_cambio_password, // <-- NUEVO
+            usuario: { 
+                id_usuario: user.id_usuario, // <-- Útil para mandarlo al endpoint de cambio de clave
+                nombre: user.nombre_usuario, 
+                rol: user.rol 
+            } 
         });
 
     } catch (error) {
@@ -52,9 +58,10 @@ const register = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
+        // Se añade requiere_cambio_password explícitamente en TRUE para nuevos registros
         const sql = `
-            INSERT INTO usuario_sistema (id_empleado, nombre_usuario, password_hash, rol, ultimo_acceso)
-            VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+            INSERT INTO usuario_sistema (id_empleado, nombre_usuario, password_hash, rol, requiere_cambio_password, ultimo_acceso)
+            VALUES ($1, $2, $3, $4, TRUE, CURRENT_TIMESTAMP)
         `;
         
         await db.query(sql, [id_empleado, username, hashedPassword, rol]);

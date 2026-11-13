@@ -101,6 +101,38 @@ const crearUsuario = async (req, res) => {
     }
 };
 
+// Actualiza/cambia la contraseña de un usuario encriptándola previamente con bcrypt
+const actualizarPassword = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { password } = req.body;
+
+        if (!password) {
+            return res.status(400).json({ success: false, message: 'La nueva contraseña es obligatoria.' });
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        const passwordHash = await bcrypt.hash(password, salt);
+
+        const sql = `
+            UPDATE usuario_sistema 
+            SET password_hash = $1 
+            WHERE id_usuario = $2
+        `;
+        
+        const result = await db.query(sql, [passwordHash, id]);
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ success: false, message: 'Usuario no encontrado.' });
+        }
+
+        res.status(200).json({ success: true, message: 'Contraseña actualizada correctamente.' });
+    } catch (error) {
+        console.error('Error al actualizar la contraseña:', error);
+        res.status(500).json({ success: false, message: 'Error interno del servidor al actualizar la contraseña' });
+    }
+};
+
 // Elimina únicamente la cuenta de acceso de un usuario del sistema utilizando su identificador
 const eliminarUsuario = async (req, res) => {
     try {
@@ -118,5 +150,6 @@ module.exports = {
     obtenerUsuarios,
     obtenerEmpleadoParaUsuario,
     crearUsuario,
+    actualizarPassword,
     eliminarUsuario
 };
