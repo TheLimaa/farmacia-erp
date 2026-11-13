@@ -107,7 +107,7 @@ const StockReport = () => {
                                 <label className="stock-input-label">Centro (ID Sucursal):</label>
                                 <input
                                     type="text"
-                                    placeholder="Ej. 1 o Miraflores"
+                                    placeholder=""
                                     value={filtros.id_sucursal}
                                     onFocus={() => setShowSucursalHelp(true)}
                                     onChange={e => { setFiltros({...filtros, id_sucursal: e.target.value}); setShowSucursalHelp(true); }}
@@ -147,7 +147,7 @@ const StockReport = () => {
                                 <label className="stock-input-label">Medicamento (ID Producto):</label>
                                 <input
                                     type="text"
-                                    placeholder="Ej. 3 o Paracetamol"
+                                    placeholder=""
                                     value={filtros.id_medicamento}
                                     onFocus={() => setShowMaterialHelp(true)}
                                     onChange={e => { setFiltros({...filtros, id_medicamento: e.target.value}); setShowMaterialHelp(true); }}

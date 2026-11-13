@@ -27,13 +27,13 @@ function App() {
               <Route path="/login" element={<Login />} />
               
               {/* DASHBOARD: Accesible para todos los roles válidos */}
-              <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'GERENTE', 'CAJERO', 'VENDEDOR']}><Dashboard /></ProtectedRoute>} />
+              <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'GERENTE', 'CAJERO', 'VENDEDOR', 'AUDITOR', 'GESTOR DE PERSONAL']}><Dashboard /></ProtectedRoute>} />
               
               {/* PORTAL EXCLUSIVO REPARTIDORES */}
               <Route path="/repartidor" element={<ProtectedRoute allowedRoles={['REPARTIDOR', 'ADMINISTRADOR']}><RepartidorPortal /></ProtectedRoute>} />
               
               {/* OPERATIVO BÁSICO: Vendedor en adelante */}
-              <Route path="/stock" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'GERENTE', 'CAJERO', 'VENDEDOR']}><StockReport /></ProtectedRoute>} />
+              <Route path="/stock" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'GERENTE', 'CAJERO', 'VENDEDOR', 'AUDITOR']}><StockReport /></ProtectedRoute>} />
               <Route path="/call-center" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'GERENTE', 'CAJERO', 'VENDEDOR']}><CallCenter /></ProtectedRoute>} />
               
               {/* LOGÍSTICA BÁSICA: Cajero en adelante */}
@@ -42,13 +42,13 @@ function App() {
               
               {/* OPERATIVO GERENCIAL: Gerente y Administrador */}
               <Route path="/transito" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'GERENTE']}><TransitReport /></ProtectedRoute>} />
-              <Route path="/activos-fijos" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'GERENTE']}><ActivosFijos /></ProtectedRoute>} />
-              <Route path="/auditoria" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'GERENTE']}><Audit /></ProtectedRoute>} />
+              <Route path="/activos-fijos" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'GERENTE', 'AUDITOR']}><ActivosFijos /></ProtectedRoute>} />
+              <Route path="/auditoria" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'GERENTE', 'AUDITOR']}><Audit /></ProtectedRoute>} />
               
-              {/* EXCLUSIVO ADMINISTRADORES */}
+              {/* EXCLUSIVO ADMINISTRADORES Y GESTOR DE PERSONAL / AUDITOR SEGÚN CORRESPONDA */}
               <Route path="/registros-medicamento" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR']}><Inventory /></ProtectedRoute>} />
-              <Route path="/rrhh" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR']}><RRHH /></ProtectedRoute>} />
-              <Route path="/sucursales" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR']}><Sucursales/></ProtectedRoute>} />
+              <Route path="/rrhh" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'GESTOR DE PERSONAL']}><RRHH /></ProtectedRoute>} />
+              <Route path="/sucursales" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR', 'GESTOR DE PERSONAL', 'AUDITOR']}><Sucursales/></ProtectedRoute>} />
               <Route path="/usuarios" element={<ProtectedRoute allowedRoles={['ADMINISTRADOR']}><Usuarios/></ProtectedRoute>} />
               
               {/* Fallback */}

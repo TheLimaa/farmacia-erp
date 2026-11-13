@@ -6,22 +6,24 @@ import { API_URL } from '../config/api';
 const ActivosFijos = () => {
     const navigate = useNavigate();
     
-    // Saca al usuario del almacenamiento y define si tiene permisos de administrador
+    // Saca al usuario del almacenamiento y define si tiene permisos de administrador o auditor
     const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
     const rolUsuario = (user.rol || user.ROL || '').toUpperCase();
     const esAdmin = rolUsuario === 'ADMINISTRADOR';
+    const esAuditor = rolUsuario === 'AUDITOR';
+    const puedeEditar = esAdmin;
 
     const [activos, setActivos] = useState([]);
     const [mensaje, setMensaje] = useState('');
     const [cargando, setCargando] = useState(true);
     
-    // Estados para el buscador de sucursales (Solo Admin)
+    // Estados para el buscador de sucursales (Admin y Auditor)
     const [sucursales, setSucursales] = useState([]);
     const [busquedaSucursal, setBusquedaSucursal] = useState('');
     const [showSucursales, setShowSucursales] = useState(false);
     const refSucursales = useRef(null);
     
-    // Filtro de tabla y sucursal del gerente
+    // Filtro de tabla y sucursal del gerente / auditor
     const [filtroTabla, setFiltroTabla] = useState('');
     const [gerenteSucursalNombre, setGerenteSucursalNombre] = useState('');
     
@@ -39,10 +41,10 @@ const ActivosFijos = () => {
 
             try {
                 const [resActivos, resSucursalesOrUser] = await Promise.all([
-                    fetch('' + API_URL + '/api/activos').then(res => res.json()).catch(() => ({ success: false })),
-                    esAdmin 
-                        ? fetch('' + API_URL + '/api/sucursales').then(res => res.json()).catch(() => ({ success: false }))
-                        : fetch('' + API_URL + '/api/usuarios').then(res => res.json()).catch(() => ({ success: false })),
+                    fetch(`${API_URL}/api/activos`).then(res => res.json()).catch(() => ({ success: false })),
+                    (esAdmin || esAuditor)
+                        ? fetch(`${API_URL}/api/sucursales`).then(res => res.json()).catch(() => ({ success: false }))
+                        : fetch(`${API_URL}/api/usuarios`).then(res => res.json()).catch(() => ({ success: false })),
                     tiempoMinimo
                 ]);
 
@@ -50,7 +52,7 @@ const ActivosFijos = () => {
                     setActivos(resActivos.data);
                 }
 
-                if (esAdmin) {
+                if (esAdmin || esAuditor) {
                     if (resSucursalesOrUser.success) {
                         setSucursales(resSucursalesOrUser.data);
                     }
@@ -84,12 +86,12 @@ const ActivosFijos = () => {
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [esAdmin]);
+    }, [esAdmin, esAuditor]);
 
     // Trae la lista actualizada de todos los activos fijos desde la API
     const cargarActivos = async () => {
         try {
-            const res = await fetch('' + API_URL + '/api/activos');
+            const res = await fetch(`${API_URL}/api/activos`);
             const data = await res.json();
             if (data.success) setActivos(data.data);
         } catch (error) { console.error('Error al cargar activos:', error); }
@@ -98,7 +100,7 @@ const ActivosFijos = () => {
     // Envía los datos del formulario para registrar un nuevo activo en el sistema
     const handleRegistrar = async (e) => {
         e.preventDefault();
-        if (!esAdmin) return;
+        if (!puedeEditar) return;
         
         if (!nuevoActivo.id_sucursal) {
             setMensaje('❌ Por favor, asegúrese de tener una sucursal asignada.');
@@ -107,7 +109,7 @@ const ActivosFijos = () => {
         }
 
         try {
-            const res = await fetch('' + API_URL + '/api/activos', {
+            const res = await fetch(`${API_URL}/api/activos`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(nuevoActivo)
@@ -128,6 +130,7 @@ const ActivosFijos = () => {
 
     // Actualiza el estado operativo de un activo fijo previa confirmación
     const handleEstadoChange = async (id, nuevoEstado) => {
+        if (!puedeEditar) return;
         const confirmar = window.confirm(`¿Estás seguro que deseas cambiar el estado de este activo a "${nuevoEstado.replace('_', ' ')}"?\n\nEsto puede afectar el cálculo del patrimonio total.`);
         
         if (!confirmar) {
@@ -136,7 +139,7 @@ const ActivosFijos = () => {
         }
 
         try {
-            await fetch(`' + API_URL + '/api/activos/${id}/estado`, {
+            await fetch(`${API_URL}/api/activos/${id}/estado`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ estado: nuevoEstado })
@@ -147,7 +150,7 @@ const ActivosFijos = () => {
         }
     };
 
-    // Filtra las sucursales según lo que el administrador vaya escribiendo
+    // Filtra las sucursales según lo que el administrador o auditor vaya escribiendo
     const sucursalesFiltradas = sucursales.filter(s => {
         const id = s.ID_SUCURSAL || s.id_sucursal;
         const nombre = s.NOMBRE_UBICACION || s.nombre_ubicacion;
@@ -156,7 +159,7 @@ const ActivosFijos = () => {
 
     // Filtra los activos que se muestran en la tabla dependiendo del rol y la sucursal seleccionada
     const activosVisibles = activos.filter(a => {
-        if (!esAdmin) {
+        if (!esAdmin && !esAuditor) {
             if (gerenteSucursalNombre) {
                 const nombreSucursalActivo = a.SUCURSAL || a.sucursal || a.NOMBRE_UBICACION;
                 return nombreSucursalActivo === gerenteSucursalNombre;
@@ -206,7 +209,7 @@ const ActivosFijos = () => {
             <div className="grid-superior">
                 
                 {/* Formulario para dar de alta nuevos activos, solo visible para el admin */}
-                {esAdmin && (
+                {puedeEditar && (
                     <div className="card-formulario">
                         <h3>Registrar Nueva Adquisición</h3>
                         <form onSubmit={handleRegistrar} className="form-registro">
@@ -271,7 +274,7 @@ const ActivosFijos = () => {
                                 <input 
                                     type="text" 
                                     required 
-                                    placeholder="Ej. Motocicleta Honda NX 190, Mac M2..." 
+                                    placeholder="Descripción del activo..." 
                                     value={nuevoActivo.descripcion} 
                                     onChange={e => setNuevoActivo({...nuevoActivo, descripcion: e.target.value})} 
                                     className="input-field"
@@ -297,14 +300,14 @@ const ActivosFijos = () => {
                 )}
 
                 {/* Tarjeta que muestra el cálculo total del patrimonio */}
-                <div className="card-resumen" style={{ flex: esAdmin ? 1 : 'none', width: esAdmin ? 'auto' : '100%' }}>
+                <div className="card-resumen" style={{ flex: puedeEditar ? 1 : 'none', width: puedeEditar ? 'auto' : '100%' }}>
                     <div className="card-resumen-icono">🏢</div>
                     <h3>Valor Total del Patrimonio</h3>
                     <div className="patrimonio-valor">
                         Q {patrimonioTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                     <p className="patrimonio-descripcion">
-                        {esAdmin && !filtroTabla 
+                        {(esAdmin || esAuditor) && !filtroTabla 
                             ? "Este valor consolida la inversión en infraestructura de toda la cadena (excluyendo activos dados de baja)."
                             : `Inversión en infraestructura de la sucursal ${gerenteSucursalNombre || ''} (excluyendo bajas).`
                         }
@@ -316,10 +319,10 @@ const ActivosFijos = () => {
             <div className="card-tabla">
                 <div className="tabla-header-container">
                     <h3>
-                        Inventario de Activos Fijos {esAdmin ? 'por Sucursal' : `- ${gerenteSucursalNombre}`}
+                        Inventario de Activos Fijos {(esAdmin || esAuditor) ? 'por Sucursal' : `- ${gerenteSucursalNombre}`}
                     </h3>
                     
-                    {esAdmin && (
+                    {(esAdmin || esAuditor) && (
                         <div className="filtro-container">
                             <label>Filtrar vista:</label>
                             <select 
@@ -373,7 +376,7 @@ const ActivosFijos = () => {
                                         <td className="descripcion-activo">{descripcion}</td>
                                         <td className="valor-activo">Q {parseFloat(valorCompra).toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
                                         <td className="estado-activo-td">
-                                            {esAdmin ? (
+                                            {puedeEditar ? (
                                                 <select 
                                                     value={estado}
                                                     onChange={(e) => handleEstadoChange(idActivo, e.target.value)}
@@ -394,7 +397,7 @@ const ActivosFijos = () => {
                             })
                         ) : (
                             <tr><td colSpan="6" className="tabla-vacia">
-                                {esAdmin && filtroTabla ? 'Esta sucursal no tiene activos registrados.' : 'No hay activos fijos registrados en esta sucursal.'}
+                                {(esAdmin || esAuditor) && filtroTabla ? 'Esta sucursal no tiene activos registrados.' : 'No hay activos fijos registrados en esta sucursal.'}
                             </td></tr>
                         )}
                     </tbody>

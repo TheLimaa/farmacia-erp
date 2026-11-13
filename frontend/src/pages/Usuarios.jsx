@@ -8,6 +8,7 @@ const Usuarios = () => {
     const [usuarios, setUsuarios] = useState([]);
     const [mensaje, setMensaje] = useState('');
     const [cargando, setCargando] = useState(true);
+    const [verPassword, setVerPassword] = useState(false);
     
     const [modalAbierto, setModalAbierto] = useState(false);
     const [idEmpleadoBusqueda, setIdEmpleadoBusqueda] = useState('');
@@ -77,6 +78,10 @@ const Usuarios = () => {
                     rolCalculado = 'CAJERO';
                 } else if (puestoUpper.includes('REPARTIDOR') || puestoUpper === 'REPARTIDOR') {
                     rolCalculado = 'REPARTIDOR';
+                } else if (puestoUpper.includes('GESTOR DE PERSONAL') || puestoUpper === 'GESTOR DE PERSONAL') {
+                    rolCalculado = 'GESTOR DE PERSONAL';
+                } else if (puestoUpper.includes('AUDITOR') || puestoUpper === 'AUDITOR') {
+                    rolCalculado = 'AUDITOR';
                 } else if (puestoUpper.includes('VENDEDOR') || puestoUpper === 'VENDEDOR') {
                     rolCalculado = 'VENDEDOR';
                 }
@@ -163,6 +168,7 @@ const Usuarios = () => {
                     setEmpleadoEncontrado(null);
                     setIdEmpleadoBusqueda('');
                     setFormUsuario({ username: '', password: '', rol: 'VENDEDOR' });
+                    setVerPassword(false);
                     setModalAbierto(true);
                 }} className="btn-nuevo-usuario">
                     + Nuevo Usuario
@@ -202,6 +208,8 @@ const Usuarios = () => {
                             else if (rol === 'GERENTE') claseRol = 'gerente'; 
                             else if (rol === 'CAJERO') claseRol = 'cajero'; 
                             else if (rol === 'REPARTIDOR') claseRol = 'repartidor';
+                            else if (rol === 'GESTOR DE PERSONAL') claseRol = 'gestor-personal';
+                            else if (rol === 'AUDITOR') claseRol = 'auditor';
 
                             return (
                                 <tr key={id}>
@@ -237,7 +245,7 @@ const Usuarios = () => {
                             <div className="usuarios-busqueda-row">
                                 <input 
                                     type="number" 
-                                    placeholder="Ej. 3" 
+                                    placeholder="" 
                                     value={idEmpleadoBusqueda} 
                                     onChange={e => setIdEmpleadoBusqueda(e.target.value)} 
                                     className="usuarios-input-buscar" 
@@ -268,12 +276,44 @@ const Usuarios = () => {
                         <form onSubmit={crearUsuario} className="usuarios-form-crear">
                             <div className="usuarios-form-field">
                                 <label className="usuarios-form-label">Nombre de Usuario:*</label>
-                                <input type="text" required value={formUsuario.username} onChange={e => setFormUsuario({...formUsuario, username: e.target.value})} className="usuarios-form-input" />
+                                <input 
+                                    type="text" 
+                                    required 
+                                    value={formUsuario.username} 
+                                    onChange={e => setFormUsuario({...formUsuario, username: e.target.value.toUpperCase()})} 
+                                    style={{ textTransform: 'uppercase' }}
+                                    className="usuarios-form-input" 
+                                />
                             </div>
 
                             <div className="usuarios-form-field">
                                 <label className="usuarios-form-label">Contraseña:*</label>
-                                <input type="password" required value={formUsuario.password} onChange={e => setFormUsuario({...formUsuario, password: e.target.value})} className="usuarios-form-input" />
+                                <div className="usuarios-password-wrapper" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                    <input 
+                                        type={verPassword ? "text" : "password"} 
+                                        required 
+                                        value={formUsuario.password} 
+                                        onChange={e => setFormUsuario({...formUsuario, password: e.target.value})} 
+                                        className="usuarios-form-input" 
+                                        style={{ width: '100%', paddingRight: '40px' }}
+                                    />
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setVerPassword(!verPassword)} 
+                                        style={{
+                                            position: 'absolute',
+                                            right: '10px',
+                                            background: 'none',
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            fontSize: '1.1rem',
+                                            padding: '0'
+                                        }}
+                                        title={verPassword ? "Ocultar contraseña" : "Ver contraseña"}
+                                    >
+                                        {verPassword ? "👁️‍🗨️" : "👁️"}
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="usuarios-form-field">
@@ -287,6 +327,8 @@ const Usuarios = () => {
                                     <option value="GERENTE">GERENTE</option>
                                     <option value="CAJERO">CAJERO</option>
                                     <option value="REPARTIDOR">REPARTIDOR</option>
+                                    <option value="GESTOR DE PERSONAL">GESTOR DE PERSONAL</option>
+                                    <option value="AUDITOR">AUDITOR</option>
                                     <option value="VENDEDOR">VENDEDOR</option>
                                 </select>
                                 <small className="usuarios-helper-text">

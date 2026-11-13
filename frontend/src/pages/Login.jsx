@@ -82,7 +82,8 @@ const Login = () => {
                             type="text" 
                             placeholder="Ingrese su usuario" 
                             value={username} 
-                            onChange={(e) => setUsername(e.target.value)} 
+                            onChange={(e) => setUsername(e.target.value.toUpperCase())} 
+                            style={{ textTransform: 'uppercase' }}
                             required 
                             className="login-input"
                         />

@@ -73,6 +73,8 @@ const Dashboard = () => {
         'REPARTIDOR': [],
         'VENDEDOR': ['/stock', '/call-center'],
         'CAJERO': ['/stock', '/call-center', '/delivery', '/transito'],
+        'AUDITOR': ['/stock', '/sucursales', '/activos-fijos', '/auditoria'],
+        'GESTOR DE PERSONAL': ['/sucursales', '/rrhh'],
         'GERENTE': ['/stock', '/call-center', '/transito', '/delivery', '/activos-fijos', '/auditoria'],
         'ADMINISTRADOR': ['*']
     };

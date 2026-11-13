@@ -7,10 +7,12 @@ import { API_URL } from '../config/api';
 const Audit = () => {
     const navigate = useNavigate();
     
-    // Saca al usuario del almacenamiento y verifica si cuenta con permisos de administrador
+    // Saca al usuario del almacenamiento y verifica si cuenta con permisos de administrador o auditor
     const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
     const rolUsuario = (user.rol || user.ROL || '').toUpperCase();
     const esAdmin = rolUsuario === 'ADMINISTRADOR';
+    const esAuditor = rolUsuario === 'AUDITOR';
+    const puedeVerTodo = esAdmin || esAuditor;
 
     const [financialsOriginal, setFinancialsOriginal] = useState([]);
     const [cashFlowOriginal, setCashFlowOriginal] = useState([]);
@@ -56,7 +58,7 @@ const Audit = () => {
                 setFinancialsOriginal(finNormalizados);
                 setCashFlowOriginal(flowNormalizados);
 
-                if (!esAdmin) {
+                if (!puedeVerTodo) {
                     try {
                         const res = await fetch(`${API_URL}/api/usuarios`);
                         const data = await res.json();
@@ -74,7 +76,7 @@ const Audit = () => {
                             }
                         }
                     } catch (error) {
-                        console.error("Error al obtener sucursal del gerente:", error);
+                        console.error("Error al obtener sucursal del usuario:", error);
                     }
                 }
             } catch (error) {
@@ -85,11 +87,11 @@ const Audit = () => {
         };
 
         cargarDatosAuditoria();
-    }, [esAdmin]);
+    }, [puedeVerTodo]);
 
     useEffect(() => {
         // Filtra los datos financieros y de flujo según la sucursal o el rol del usuario
-        if (!esAdmin && gerenteSucursalNombre) {
+        if (!puedeVerTodo && gerenteSucursalNombre) {
             const filteredFinancials = financialsOriginal.filter(
                 (item) => item.nombre_ubicacion.toLowerCase() === gerenteSucursalNombre.toLowerCase()
             );
@@ -99,7 +101,7 @@ const Audit = () => {
                 (mov) => mov.sucursal.toLowerCase() === gerenteSucursalNombre.toLowerCase()
             );
             setCashFlow(filteredCashFlow);
-        } else if (esAdmin) {
+        } else if (puedeVerTodo) {
             if (sucursalSeleccionada === '') {
                 setFinancials(financialsOriginal);
                 setCashFlow(cashFlowOriginal);
@@ -115,7 +117,7 @@ const Audit = () => {
                 setCashFlow(filteredCashFlow);
             }
         }
-    }, [sucursalSeleccionada, financialsOriginal, cashFlowOriginal, esAdmin, gerenteSucursalNombre]);
+    }, [sucursalSeleccionada, financialsOriginal, cashFlowOriginal, puedeVerTodo, gerenteSucursalNombre]);
 
     // Extrae una lista única de sucursales para llenar el selector de filtros
     const sucursalesUnicas = [...new Set(financialsOriginal.map(item => item.nombre_ubicacion))];
@@ -125,7 +127,7 @@ const Audit = () => {
     const totalPlanilla = financials.reduce((sum, item) => sum + item.gasto_planilla, 0);
     const totalActivos = financials.reduce((sum, item) => sum + item.valor_activos_fijos, 0);
 
-    const tituloSucursalActiva = esAdmin ? sucursalSeleccionada : gerenteSucursalNombre;
+    const tituloSucursalActiva = puedeVerTodo ? sucursalSeleccionada : gerenteSucursalNombre;
 
     // Muestra la pantalla de carga mientras se obtienen los datos de la auditoría
     if (loading) {
@@ -140,13 +142,13 @@ const Audit = () => {
                 </button>
                 <div className="audit-title-container">
                     <h2>
-                        Auditoría Gerencial Financiera {!esAdmin && `- ${gerenteSucursalNombre}`}
+                        Auditoría Gerencial Financiera {!puedeVerTodo && `- ${gerenteSucursalNombre}`}
                     </h2>
                 </div>
                 <div style={{ width: '150px' }}></div>
             </div>
 
-            {esAdmin && (
+            {puedeVerTodo && (
                 <div className="audit-filter-card">
                     <div className="filter-title">Filtrar Auditoría:</div>
                     <div className="filter-group">

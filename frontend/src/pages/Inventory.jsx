@@ -389,7 +389,7 @@ const Inventory = () => {
                                             <td style={{ padding: '8px' }}>
                                                 <input 
                                                     type="text"
-                                                    placeholder="Ej. LOT-2026-01"
+                                                    placeholder=""
                                                     value={pos.numero_lote}
                                                     onChange={e => actualizarPosicion(index, 'numero_lote', e.target.value)}
                                                     required
@@ -436,12 +436,12 @@ const Inventory = () => {
                     <form onSubmit={handleCrearProducto} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                         <div>
                             <label style={{ fontSize: '12px', color: '#aaa', display: 'block', marginBottom: '4px' }}>Nombre Comercial:*</label>
-                            <input type="text" placeholder="Ej. Amoxicilina 500mg" value={producto.nombre} onChange={e => setProducto({...producto, nombre: e.target.value})} required style={{ width: '100%', padding: '8px', background: '#121214', color: '#fff', border: '1px solid #444', borderRadius: '4px', boxSizing: 'border-box' }}/>
+                            <input type="text" placeholder="Descripción del medicamento" value={producto.nombre} onChange={e => setProducto({...producto, nombre: e.target.value})} required style={{ width: '100%', padding: '8px', background: '#121214', color: '#fff', border: '1px solid #444', borderRadius: '4px', boxSizing: 'border-box' }}/>
                         </div>
 
                         <div>
                             <label style={{ fontSize: '12px', color: '#aaa', display: 'block', marginBottom: '4px' }}>Descripción / Presentación:*</label>
-                            <input type="text" placeholder="Ej. Caja con 20 cápsulas" value={producto.descripcion} onChange={e => setProducto({...producto, descripcion: e.target.value})} required style={{ width: '100%', padding: '8px', background: '#121214', color: '#fff', border: '1px solid #444', borderRadius: '4px', boxSizing: 'border-box' }}/>
+                            <input type="text" placeholder="" value={producto.descripcion} onChange={e => setProducto({...producto, descripcion: e.target.value})} required style={{ width: '100%', padding: '8px', background: '#121214', color: '#fff', border: '1px solid #444', borderRadius: '4px', boxSizing: 'border-box' }}/>
                         </div>
 
                         <div>

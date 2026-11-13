@@ -159,7 +159,7 @@ const TransitReport = () => {
                                 <label className="transit-input-label">Centro Receptor (ID Sucursal):</label>
                                 <input 
                                     type="text" 
-                                    placeholder="Ej. 1 o Miraflores (Dejar vacío para todos)"
+                                    placeholder=""
                                     value={filtros.id_sucursal} 
                                     onFocus={() => setShowSucursalHelp(true)}
                                     onChange={e => { 
@@ -195,7 +195,7 @@ const TransitReport = () => {
                                 <label className="transit-input-label">Producto (ID Producto):</label>
                                 <input 
                                     type="text" 
-                                    placeholder="Ej. 3 o Paracetamol" 
+                                    placeholder="" 
                                     value={filtros.id_medicamento} 
                                     onFocus={() => setShowMaterialHelp(true)}
                                     onChange={e => { setFiltros({...filtros, id_medicamento: e.target.value}); setShowMaterialHelp(true); }} 

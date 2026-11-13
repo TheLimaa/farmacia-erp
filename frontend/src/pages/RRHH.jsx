@@ -94,16 +94,16 @@ const RRHH = () => {
         setModalAbierto(true);
     };
 
-    const esAdmin = formEmpleado.puesto === 'ADMINISTRADOR' || formEmpleado.puesto === 'ADMIN';
-    const esInvalidoAdmin = esAdmin && formEmpleado.id_sucursal !== '';
-    const esInvalidoOperativo = !esAdmin && formEmpleado.id_sucursal === '';
-    const hayErrorValidacion = esInvalidoAdmin || esInvalidoOperativo;
+    const esGlobal = formEmpleado.puesto === 'ADMINISTRADOR' || formEmpleado.puesto === 'ADMIN' || formEmpleado.puesto === 'GESTOR DE PERSONAL' || formEmpleado.puesto === 'AUDITOR';
+    const esInvalidoGlobal = esGlobal && formEmpleado.id_sucursal !== '';
+    const esInvalidoOperativo = !esGlobal && formEmpleado.id_sucursal === '';
+    const hayErrorValidacion = esInvalidoGlobal || esInvalidoOperativo;
 
     let mensajeValidacion = '';
-    if (esInvalidoAdmin) {
-        mensajeValidacion = '⚠️ Un Administrador no puede estar ligado a una tienda en específico.';
+    if (esInvalidoGlobal) {
+        mensajeValidacion = '⚠️ Este puesto no puede estar ligado a una tienda en específico.';
     } else if (esInvalidoOperativo) {
-        mensajeValidacion = '⚠️ Este puesto debe estar ligado a una sucursal específica.';
+        mensajeValidacion = '⚠️ Este puesto operativo debe estar ligado a una sucursal específica.';
     }
 
     // Valida y envía los datos del formulario para registrar o actualizar un empleado en el servidor
@@ -114,8 +114,8 @@ const RRHH = () => {
         if (hayErrorValidacion) return;
 
         const url = editandoId 
-            ? `' + API_URL + '/api/empleados/${editandoId}`
-            : '' + API_URL + '/api/empleados';
+            ? `${API_URL}/api/empleados/${editandoId}`
+            : `${API_URL}/api/empleados`;
         const method = editandoId ? 'PUT' : 'POST';
 
         try {
@@ -143,7 +143,7 @@ const RRHH = () => {
     const eliminarEmpleado = async (id) => {
         if (!window.confirm(`¿Está seguro de eliminar al empleado #${id}?`)) return;
         try {
-            const res = await fetch(`' + API_URL + '/api/empleados/${id}`, { method: 'DELETE' });
+            const res = await fetch(`${API_URL}/api/empleados/${id}`, { method: 'DELETE' });
             const data = await res.json();
             if (data.success) {
                 setMensaje('✅ ' + data.message);
@@ -219,7 +219,7 @@ const RRHH = () => {
                         {empleadosFiltrados.map(emp => {
                             const id = emp.ID_EMPLEADO || emp.id_empleado;
                             const nombre = emp.NOMBRE_COMPLETO || emp.nombre_completo;
-                            const sucursal = emp.SUCURSAL || emp.sucursal || 'Acceso Global (Admin)';
+                            const sucursal = emp.SUCURSAL || emp.sucursal || 'N/A';
                             const puesto = emp.PUESTO || emp.puesto;
                             const salario = parseFloat(emp.SALARIO_BASE || emp.salario_base || 0);
 
@@ -289,6 +289,8 @@ const RRHH = () => {
                                     <option value="CAJERO">Cajero</option>
                                     <option value="REPARTIDOR">Repartidor</option>
                                     <option value="GERENTE">Gerente de Sucursal</option>
+                                    <option value="GESTOR DE PERSONAL">Gestor de Personal</option>
+                                    <option value="AUDITOR">Auditor</option>
                                     <option value="ADMINISTRADOR">Administrador</option>
                                 </select>
                             </div>
@@ -307,14 +309,14 @@ const RRHH = () => {
 
                             <div className="rrhh-form-field">
                                 <label className="rrhh-form-label">
-                                    Sucursal Asignada {esAdmin ? '(Exclusivo Admin)' : ':*'}
+                                    Sucursal Asignada {esGlobal ? '(Exclusivo Global)' : ':*'}
                                 </label>
                                 <select 
                                     value={formEmpleado.id_sucursal} 
                                     onChange={e => setFormEmpleado({ ...formEmpleado, id_sucursal: e.target.value })} 
                                     className="rrhh-form-select"
                                 >
-                                    <option value="">Acceso Global (Admin)</option>
+                                    <option value="">N/A</option>
                                     {sucursales.map(s => (
                                         <option key={s.ID_SUCURSAL || s.id_sucursal} value={s.ID_SUCURSAL || s.id_sucursal}>
                                             {s.ID_SUCURSAL || s.id_sucursal} - {s.NOMBRE_UBICACION || s.nombre_ubicacion}

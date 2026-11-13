@@ -9,8 +9,13 @@ const Sucursales = () => {
     const [mensaje, setMensaje] = useState('');
     const [cargando, setCargando] = useState(true);
 
-    const usuarioSesion = JSON.parse(localStorage.getItem('usuario') || '{}');
-    const esAdmin = usuarioSesion.rol === 'ADMIN' || usuarioSesion.ROL === 'ADMIN' || usuarioSesion.rol === 'ADMINISTRADOR';
+    const usuarioSesion = JSON.parse(localStorage.getItem('usuario') || localStorage.getItem('user') || '{}');
+    const rolUsuario = (usuarioSesion.rol || usuarioSesion.ROL || '').toUpperCase();
+    const esAdmin = rolUsuario === 'ADMIN' || rolUsuario === 'ADMINISTRADOR';
+    
+    // El auditor y el gestor de personal solo pueden ver las sucursales, no editarlas
+    const esSoloLectura = rolUsuario === 'AUDITOR' || rolUsuario === 'GESTOR DE PERSONAL';
+    const tieneAcceso = esAdmin || esSoloLectura;
 
     const [modalAbierto, setModalAbierto] = useState(false);
     const [editandoId, setEditandoId] = useState(null);
@@ -25,7 +30,7 @@ const Sucursales = () => {
             setCargando(true);
             try {
                 const [res] = await Promise.all([
-                    fetch('' + API_URL + '/api/sucursales').then(r => r.json()).catch(() => ({ success: false })),
+                    fetch(`${API_URL}/api/sucursales`).then(r => r.json()).catch(() => ({ success: false })),
                     tiempoMinimo
                 ]);
 
@@ -46,7 +51,7 @@ const Sucursales = () => {
     // Consulta la lista actualizada de sucursales desde la API
     const cargarSucursales = async () => {
         try {
-            const res = await fetch('' + API_URL + '/api/sucursales');
+            const res = await fetch(`${API_URL}/api/sucursales`);
             const data = await res.json();
             if (data.success) setSucursales(data.data);
         } catch (error) {
@@ -57,6 +62,7 @@ const Sucursales = () => {
 
     // Abre el modal configurado para registrar una nueva sucursal
     const abrirModalCrear = () => {
+        if (esSoloLectura) return;
         setEditandoId(null);
         setNombreUbicacion('');
         setTipoUbicacion('FARMACIA');
@@ -65,6 +71,7 @@ const Sucursales = () => {
 
     // Abre el modal cargando los datos de la sucursal seleccionada para su edición
     const abrirModalEditar = (suc) => {
+        if (esSoloLectura) return;
         setEditandoId(suc.ID_SUCURSAL || suc.id_sucursal);
         setNombreUbicacion(suc.NOMBRE_UBICACION || suc.nombre_ubicacion);
         setTipoUbicacion(suc.TIPO_UBICACION || suc.tipo_ubicacion || 'FARMACIA');
@@ -74,9 +81,11 @@ const Sucursales = () => {
     // Envía los datos del formulario para crear o actualizar una sucursal en el servidor
     const guardarSucursal = async (e) => {
         e.preventDefault();
+        if (esSoloLectura) return;
+
         const url = editandoId 
-            ? `' + API_URL + '/api/sucursales/${editandoId}`
-            : '' + API_URL + '/api/sucursales';
+            ? `${API_URL}/api/sucursales/${editandoId}`
+            : `${API_URL}/api/sucursales`;
         const method = editandoId ? 'PUT' : 'POST';
 
         try {
@@ -105,9 +114,10 @@ const Sucursales = () => {
 
     // Alterna el estado operativo (activo/inactivo) de una sucursal
     const cambiarEstado = async (id, estadoActual) => {
+        if (esSoloLectura) return;
         const nuevoEstado = estadoActual === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO';
         try {
-            const res = await fetch(`' + API_URL + '/api/sucursales/${id}`, {
+            const res = await fetch(`${API_URL}/api/sucursales/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ estado: nuevoEstado })
@@ -125,9 +135,10 @@ const Sucursales = () => {
 
     // Elimina una sucursal del sistema previa confirmación
     const eliminarSucursal = async (id) => {
+        if (esSoloLectura) return;
         if (!window.confirm(`¿Está seguro de eliminar la sucursal ID ${id}?`)) return;
         try {
-            const res = await fetch(`' + API_URL + '/api/sucursales/${id}`, { method: 'DELETE' });
+            const res = await fetch(`${API_URL}/api/sucursales/${id}`, { method: 'DELETE' });
             const data = await res.json();
             if (data.success) {
                 setMensaje('✅ ' + data.message);
@@ -141,11 +152,11 @@ const Sucursales = () => {
         }
     };
 
-    if (!esAdmin && usuarioSesion.rol) {
+    if (!tieneAcceso && rolUsuario) {
         return (
             <div className="sucursales-denegado-container">
                 <h2 className="sucursales-denegado-titulo">⚠️ Acceso Denegado</h2>
-                <p className="sucursales-denegado-texto">Esta vista está reservada exclusivamente para Administradores del Sistema.</p>
+                <p className="sucursales-denegado-texto">No cuenta con los permisos necesarios para acceder a esta sección.</p>
                 <button onClick={() => navigate('/dashboard')} className="btn-volver-dashboard">
                     Volver al Dashboard
                 </button>
@@ -164,11 +175,15 @@ const Sucursales = () => {
             <div className="sucursales-header-bar">
                 <div className="sucursales-title-wrapper">
                     <button onClick={() => navigate('/dashboard')} className="btn-regresar-sucursales">❮</button>
-                    <h2 className="sucursales-main-title">Gestión de Sucursales (Administración)</h2>
+                    <h2 className="sucursales-main-title">
+                        {esSoloLectura ? 'Visualización de Sucursales' : 'Gestión de Sucursales (Administración)'}
+                    </h2>
                 </div>
-                <button onClick={abrirModalCrear} className="btn-nueva-sucursal">
-                    + Nueva Sucursal
-                </button>
+                {!esSoloLectura && (
+                    <button onClick={abrirModalCrear} className="btn-nueva-sucursal">
+                        + Nueva Sucursal
+                    </button>
+                )}
             </div>
 
             {mensaje && (
@@ -186,7 +201,7 @@ const Sucursales = () => {
                             <th>Tipo Ubicación</th>
                             <th>Saldo Caja</th>
                             <th>Estado</th>
-                            <th style={{ textAlign: 'center' }}>Acciones</th>
+                            {!esSoloLectura && <th style={{ textAlign: 'center' }}>Acciones</th>}
                         </tr>
                     </thead>
                     <tbody>
@@ -209,30 +224,32 @@ const Sucursales = () => {
                                                 {estado}
                                             </span>
                                         </td>
-                                        <td>
-                                            <div className="sucursales-acciones-wrapper">
-                                                <button onClick={() => abrirModalEditar(suc)} className="btn-editar-sucursal">
-                                                    ✏️ Editar
-                                                </button>
-                                                <button onClick={() => cambiarEstado(id, estado)} className={`btn-estado-sucursal ${estado === 'ACTIVO' ? 'inactivar' : 'activar'}`}>
-                                                    {estado === 'ACTIVO' ? '🚫 Inactivar' : '✅ Activar'}
-                                                </button>
-                                                <button onClick={() => eliminarSucursal(id)} className="btn-eliminar-sucursal">
-                                                    🗑️
-                                                </button>
-                                            </div>
-                                        </td>
+                                        {!esSoloLectura && (
+                                            <td>
+                                                <div className="sucursales-acciones-wrapper">
+                                                    <button onClick={() => abrirModalEditar(suc)} className="btn-editar-sucursal">
+                                                        ✏️ Editar
+                                                    </button>
+                                                    <button onClick={() => cambiarEstado(id, estado)} className={`btn-estado-sucursal ${estado === 'ACTIVO' ? 'inactivar' : 'activar'}`}>
+                                                        {estado === 'ACTIVO' ? '🚫 Inactivar' : '✅ Activar'}
+                                                    </button>
+                                                    <button onClick={() => eliminarSucursal(id)} className="btn-eliminar-sucursal">
+                                                        🗑️
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        )}
                                     </tr>
                                 );
                             })
                         ) : (
-                            <tr><td colSpan="6" className="sucursales-tabla-vacia">No hay sucursales registradas.</td></tr>
+                            <tr><td colSpan={esSoloLectura ? "5" : "6"} className="sucursales-tabla-vacia">No hay sucursales registradas.</td></tr>
                         )}
                     </tbody>
                 </table>
             </div>
 
-            {modalAbierto && (
+            {modalAbierto && !esSoloLectura && (
                 <div className="sucursales-modal-overlay">
                     <div className="sucursales-modal-content">
                         <h3 className="sucursales-modal-title">
@@ -246,7 +263,7 @@ const Sucursales = () => {
                                     required 
                                     value={nombreUbicacion} 
                                     onChange={e => setNombreUbicacion(e.target.value)} 
-                                    placeholder="Ej. Farmacia Centro Comercial Andaria" 
+                                    placeholder="" 
                                     className="sucursales-form-input" 
                                 />
                             </div>
