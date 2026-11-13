@@ -1,5 +1,6 @@
-const db = require('../config/db'); // Importa tu conexión a PostgreSQL
+const db = require('../config/db');
 
+// Consulta la lista de clientes (BPs) en la base de datos aplicando un filtro de búsqueda opcional por NIT o nombre completo
 const obtenerBPs = async (req, res) => {
     try {
         const { q } = req.query;
@@ -8,8 +9,6 @@ const obtenerBPs = async (req, res) => {
         let params = [];
         
         if (q) {
-            // En PostgreSQL usamos ILIKE para hacer búsqueda insensible a mayúsculas/minúsculas de forma más limpia,
-            // o LOWER() con parámetros posicionales ($1)
             sql += ` WHERE LOWER(nit) LIKE $1 OR LOWER(nombre_completo) LIKE $1`;
             params = [`%${q.toLowerCase()}%`];
         }
@@ -24,6 +23,7 @@ const obtenerBPs = async (req, res) => {
     }
 };
 
+// Registra un nuevo interlocutor comercial (cliente) validando que el NIT no se encuentre duplicado en el sistema
 const crearBP = async (req, res) => {
     try {
         const { nit, nombre_completo, telefono_contacto } = req.body;
@@ -38,7 +38,6 @@ const crearBP = async (req, res) => {
     } catch (error) {
         console.error('Error al crear BP:', error);
         
-        // En PostgreSQL, el código '23505' corresponde a violación de restricción única (Unique Violation / NIT duplicado)
         if (error.code === '23505') {
             return res.status(400).json({ success: false, message: 'El NIT ingresado ya está registrado.' });
         }

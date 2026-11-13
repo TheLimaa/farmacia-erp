@@ -142,13 +142,13 @@ h1, h2, h3, h4, h5, h6,
 }
 
 
-/* 1. Desactivar el I-beam y la selección de texto por defecto en toda la aplicación */
+/* Desactivar el I-beam y la selección de texto por defecto en toda la aplicación */
 body, h1, h2, h3, h4, h5, h6, p, span, label, th, td, div {
     cursor: default !important;
-    user-select: none !important; /* Vital para que el navegador no active la barra de texto */
+    user-select: none !important;
 }
 
-/* 2. Devolver el cursor de mano (pointer) a elementos interactivos */
+/* Devolver el cursor de mano (pointer) a elementos interactivos */
 button, 
 a, 
 select, 
@@ -163,12 +163,11 @@ label[for],
     cursor: pointer !important;
 }
 
-/* Asegurar que el texto dentro de los botones herede el puntero */
 button *, a * {
     cursor: pointer !important;
 }
 
-/* 3. Permitir escritura y selección únicamente dentro de campos de entrada reales */
+/* Permitir escritura y selección únicamente dentro de campos de entrada reales */
 input[type="text"], 
 input[type="number"], 
 input[type="password"], 

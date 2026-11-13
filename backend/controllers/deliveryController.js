@@ -1,5 +1,6 @@
-const db = require('../config/db'); // Importa tu conexión a PostgreSQL
+const db = require('../config/db');
 
+// Consulta la lista detallada de pedidos de entrega en la base de datos uniendo la información de clientes, sucursales de despacho y repartidores, ordenados de forma descendente por la fecha de solicitud
 const getPedidosEntrega = async (req, res) => {
     try {
         const sql = `

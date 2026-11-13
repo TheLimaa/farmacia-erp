@@ -1,15 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Cargando from '../components/Cargando'; // <--- Importamos la plantilla de carga
+import Cargando from '../components/Cargando';
 import { API_URL } from '../config/api';
 
 const Usuarios = () => {
     const navigate = useNavigate();
     const [usuarios, setUsuarios] = useState([]);
     const [mensaje, setMensaje] = useState('');
-    const [cargando, setCargando] = useState(true); // <--- Estado de carga añadido
+    const [cargando, setCargando] = useState(true);
     
-    // Modal y Formulario
     const [modalAbierto, setModalAbierto] = useState(false);
     const [idEmpleadoBusqueda, setIdEmpleadoBusqueda] = useState('');
     const [empleadoEncontrado, setEmpleadoEncontrado] = useState(null);
@@ -20,12 +19,12 @@ const Usuarios = () => {
         rol: 'VENDEDOR'
     });
 
+    // Carga la lista inicial de usuarios en paralelo junto con un tiempo mínimo de espera
     useEffect(() => {
         const inicializarDatos = async () => {
             const tiempoMinimo = new Promise(resolve => setTimeout(resolve, 1000));
 
             try {
-                // Ejecutamos la petición y el tiempo mínimo en paralelo
                 const [res] = await Promise.all([
                     fetch(`${API_URL}/api/usuarios`).then(r => r.json()).catch(() => ({ success: false })),
                     tiempoMinimo
@@ -44,6 +43,7 @@ const Usuarios = () => {
         inicializarDatos();
     }, []);
 
+    // Consulta la lista actualizada de usuarios desde la API
     const cargarUsuarios = async () => {
         try {
             const res = await fetch(`${API_URL}/api/usuarios`);
@@ -54,6 +54,7 @@ const Usuarios = () => {
         }
     };
 
+    // Busca un empleado por su código para asociarlo al nuevo usuario y asigna su rol automáticamente
     const buscarEmpleado = async () => {
         if (!idEmpleadoBusqueda) return;
         try {
@@ -66,7 +67,6 @@ const Usuarios = () => {
 
                 setEmpleadoEncontrado(emp);
                 
-                // AUTODETECCIÓN DE ROL INCLUYENDO REPARTIDOR
                 let rolCalculado = 'VENDEDOR'; 
                 
                 if (puestoUpper.includes('ADMINISTRADOR') || puestoUpper === 'ADMINISTRADOR') {
@@ -91,6 +91,7 @@ const Usuarios = () => {
         }
     };
 
+    // Envía los datos del formulario para registrar las nuevas credenciales de acceso de un usuario
     const crearUsuario = async (e) => {
         e.preventDefault();
         if (!empleadoEncontrado) {
@@ -127,6 +128,7 @@ const Usuarios = () => {
         }
     };
 
+    // Elimina las credenciales de acceso de un usuario previa confirmación
     const eliminarUsuario = async (id, user) => {
         if (!window.confirm(`¿Está seguro de eliminar las credenciales de "${user}"?`)) return;
         try {
@@ -144,7 +146,7 @@ const Usuarios = () => {
         }
     };
 
-    // Si está cargando inicialmente, mostramos la plantilla reutilizable
+    // Muestra la pantalla de carga mientras se obtienen los datos iniciales
     if (cargando) {
         return <Cargando mensaje="Cargando..." />;
     }
@@ -152,7 +154,6 @@ const Usuarios = () => {
     return (
         <div className="usuarios-container">
             
-            {/* Cabecera */}
             <div className="usuarios-header-bar">
                 <div className="usuarios-title-wrapper">
                     <button onClick={() => navigate('/dashboard')} className="btn-regresar-usuarios">❮</button>
@@ -174,7 +175,6 @@ const Usuarios = () => {
                 </div>
             )}
 
-            {/* Tabla de Usuarios */}
             <div className="usuarios-card-tabla">
                 <table className="usuarios-tabla">
                     <thead>
@@ -197,7 +197,6 @@ const Usuarios = () => {
                             const sucursal = u.SUCURSAL || u.sucursal || 'Acceso Global (ADMINISTRADOR)';
                             const rol = u.ROL || u.rol;
 
-                            // Definir clase del badge según el rol
                             let claseRol = 'vendedor'; 
                             if (rol === 'ADMINISTRADOR') claseRol = 'administrador'; 
                             else if (rol === 'GERENTE') claseRol = 'gerente'; 
@@ -228,7 +227,6 @@ const Usuarios = () => {
                 </table>
             </div>
 
-            {/* Modal Crear Usuario */}
             {modalAbierto && (
                 <div className="usuarios-modal-overlay">
                     <div className="usuarios-modal-content">

@@ -1,6 +1,6 @@
-const db = require('../config/db'); // Importa tu conexión a PostgreSQL
+const db = require('../config/db');
 
-// GET: Obtener todos los activos
+// Consulta la lista completa de activos fijos en la base de datos junto con la información de su sucursal asociada y los devuelve ordenados
 const obtenerActivos = async (req, res) => {
     try {
         const sql = `
@@ -25,13 +25,11 @@ const obtenerActivos = async (req, res) => {
     }
 };
 
-// POST: Registrar un nuevo activo (SIN AFECTAR EL SALDO DE LA CAJA)
+// Registra un nuevo activo fijo en la base de datos asignando la fecha de adquisición actual y el estado activo
 const registrarActivo = async (req, res) => {
     try {
         const { id_sucursal, tipo_activo, descripcion, valor_compra } = req.body;
         
-        // En PostgreSQL no necesitamos calcular el MAX() manualmente gracias a SERIAL,
-        // simplemente insertamos y dejamos que la base de datos asigne el ID y el TIMESTAMP automático.
         const sqlActivo = `
             INSERT INTO activo_fijo (id_sucursal, tipo_activo, descripcion, valor_compra, fecha_adquisicion, estado) 
             VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, 'ACTIVO')
@@ -47,13 +45,12 @@ const registrarActivo = async (req, res) => {
     }
 };
 
-// PUT: Cambiar estado (ACTIVO, EN_REPARACION, DE_BAJA)
+// Modifica el estado operativo de un activo fijo específico utilizando su identificador
 const actualizarEstadoActivo = async (req, res) => {
     try {
         const { id } = req.params;
         const { estado } = req.body;
         
-        // Se usan parámetros posicionales ($1, $2) propios de PostgreSQL
         const sql = `UPDATE activo_fijo SET estado = $1 WHERE id_activo = $2`;
         await db.query(sql, [estado, id]);
         

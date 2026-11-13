@@ -14,7 +14,7 @@ import TransitReport from './pages/TransitReport';
 import ActivosFijos from './pages/ActivosFijos';
 import Sucursales from './pages/Sucursales';
 import Usuarios from './pages/Usuarios';
-import RepartidorPortal from './pages/RepartidorPortal'; // <--- 1. Importar el portal de repartidor
+import RepartidorPortal from './pages/RepartidorPortal';
 import './App.css';
 
 function App() {

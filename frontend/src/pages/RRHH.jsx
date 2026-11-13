@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Cargando from '../components/Cargando'; // <--- Importamos la plantilla de carga
+import Cargando from '../components/Cargando';
 import { API_URL } from '../config/api';
 
 const RRHH = () => {
@@ -10,9 +10,8 @@ const RRHH = () => {
     const [filtroSucursal, setFiltroSucursal] = useState('');
     const [mensaje, setMensaje] = useState('');
     const [errorServidorModal, setErrorServidorModal] = useState('');
-    const [cargando, setCargando] = useState(true); // <--- Estado de carga añadido
+    const [cargando, setCargando] = useState(true);
 
-    // Modal para Crear / Editar
     const [modalAbierto, setModalAbierto] = useState(false);
     const [editandoId, setEditandoId] = useState(null);
     const [formEmpleado, setFormEmpleado] = useState({
@@ -22,12 +21,12 @@ const RRHH = () => {
         id_sucursal: ''
     });
 
+    // Carga inicial de datos de empleados y sucursales en paralelo
     useEffect(() => {
         const cargarDatosIniciales = async () => {
             const tiempoMinimo = new Promise(resolve => setTimeout(resolve, 1000));
 
             try {
-                // Ejecutamos las peticiones de empleados, sucursales y el tiempo mínimo en paralelo
                 const [resEmp, resSuc] = await Promise.all([
                     fetch('' + API_URL + '/api/empleados').then(res => res.json()).catch(() => ({ success: false })),
                     fetch('' + API_URL + '/api/sucursales').then(res => res.json()).catch(() => ({ success: false })),
@@ -46,6 +45,7 @@ const RRHH = () => {
         cargarDatosIniciales();
     }, []);
 
+    // Consulta la lista actualizada de empleados desde la API
     const cargarEmpleados = async () => {
         try {
             const res = await fetch('' + API_URL + '/api/empleados'); 
@@ -56,6 +56,7 @@ const RRHH = () => {
         }
     };
 
+    // Consulta la lista actualizada de sucursales desde la API
     const cargarSucursales = async () => {
         try {
             const res = await fetch('' + API_URL + '/api/sucursales');
@@ -66,6 +67,7 @@ const RRHH = () => {
         }
     };
 
+    // Abre el modal configurado para registrar un nuevo empleado
     const abrirModalCrear = () => {
         setEditandoId(null);
         setErrorServidorModal('');
@@ -79,6 +81,7 @@ const RRHH = () => {
         setModalAbierto(true);
     };
 
+    // Abre el modal cargando los datos del empleado seleccionado para su edición
     const abrirModalEditar = (emp) => {
         setEditandoId(emp.ID_EMPLEADO || emp.id_empleado);
         setErrorServidorModal('');
@@ -91,7 +94,6 @@ const RRHH = () => {
         setModalAbierto(true);
     };
 
-    // --- VALIDACIÓN REACTIVA EN TIEMPO REAL ---
     const esAdmin = formEmpleado.puesto === 'ADMINISTRADOR' || formEmpleado.puesto === 'ADMIN';
     const esInvalidoAdmin = esAdmin && formEmpleado.id_sucursal !== '';
     const esInvalidoOperativo = !esAdmin && formEmpleado.id_sucursal === '';
@@ -104,7 +106,7 @@ const RRHH = () => {
         mensajeValidacion = '⚠️ Este puesto debe estar ligado a una sucursal específica.';
     }
 
-    // --- GUARDAR CON VALIDACIÓN ---
+    // Valida y envía los datos del formulario para registrar o actualizar un empleado en el servidor
     const guardarEmpleado = async (e) => {
         e.preventDefault();
         setErrorServidorModal('');
@@ -137,6 +139,7 @@ const RRHH = () => {
         }
     };
 
+    // Elimina un empleado del sistema previa confirmación
     const eliminarEmpleado = async (id) => {
         if (!window.confirm(`¿Está seguro de eliminar al empleado #${id}?`)) return;
         try {
@@ -154,6 +157,7 @@ const RRHH = () => {
         }
     };
 
+    // Filtra la lista de empleados según la sucursal seleccionada
     const empleadosFiltrados = empleados.filter(e => {
         const suc = (e.SUCURSAL || e.sucursal || '').toLowerCase();
         return suc.includes(filtroSucursal.toLowerCase());
@@ -161,7 +165,7 @@ const RRHH = () => {
 
     const gastoTotalPlanilla = empleadosFiltrados.reduce((acc, curr) => acc + (parseFloat(curr.SALARIO_BASE || curr.salario_base) || 0), 0);
 
-    // Si está cargando, mostramos la plantilla reutilizable
+    // Muestra la pantalla de carga mientras se obtienen los datos iniciales
     if (cargando) {
         return <Cargando mensaje="Cargando..." />;
     }
@@ -169,7 +173,6 @@ const RRHH = () => {
     return (
         <div className="rrhh-container">
             
-            {/* Cabecera */}
             <div className="rrhh-header-bar">
                 <div className="rrhh-title-wrapper">
                     <button onClick={() => navigate('/dashboard')} className="btn-regresar-rrhh">❮</button>
@@ -186,7 +189,6 @@ const RRHH = () => {
                 </div>
             )}
 
-            {/* Tarjeta de Resumen */}
             <div className="rrhh-card-resumen">
                 <div className="rrhh-resumen-header">
                     <h3 className="rrhh-section-title">Nómina Activa y Gasto Total en Planilla</h3>
@@ -245,7 +247,6 @@ const RRHH = () => {
                 </table>
             </div>
 
-            {/* Modal Crear / Editar */}
             {modalAbierto && (
                 <div className="rrhh-modal-overlay">
                     <div className="rrhh-modal-content">
@@ -253,7 +254,6 @@ const RRHH = () => {
                             {editandoId ? `Editar Empleado #${editandoId}` : 'Nuevo Empleado'}
                         </h3>
 
-                        {/* Mensaje de Advertencia Dinámico */}
                         {mensajeValidacion && (
                             <div className="rrhh-modal-advertencia">
                                 {mensajeValidacion}

@@ -1,12 +1,12 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const db = require('../config/db'); // Importa tu conexión a PostgreSQL
+const db = require('../config/db');
 
+// Autentica las credenciales de un usuario buscando su nombre en la base de datos, verificando la contraseña con hash y generando un token JWT si el acceso es válido
 const login = async (req, res) => {
     try {
         const { username, password } = req.body;
         
-        // Buscar el usuario en la base de datos usando parámetro posicional ($1)
         const sql = `SELECT * FROM usuario_sistema WHERE nombre_usuario = $1`;
         const result = await db.query(sql, [username]);
         
@@ -19,7 +19,6 @@ const login = async (req, res) => {
         console.log("✅ Usuario encontrado:", user.nombre_usuario);
         console.log("🔑 Hash en BD:", user.password_hash);
 
-        // Comparar la contraseña ingresada con el hash en PostgreSQL
         const isMatch = await bcrypt.compare(password, user.password_hash);
         console.log("🔍 ¿La contraseña coincide?:", isMatch);
         
@@ -27,7 +26,6 @@ const login = async (req, res) => {
             return res.status(401).json({ success: false, message: 'Contraseña incorrecta' });
         }
 
-        // Generar Token JWT usando las propiedades en minúscula de Postgres
         const token = jwt.sign(
             { id: user.id_usuario, rol: user.rol, empleadoId: user.id_empleado }, 
             process.env.JWT_SECRET || 'farmacia_super_secreta_2026', 
@@ -46,15 +44,14 @@ const login = async (req, res) => {
     }
 };
 
+// Encripta la contraseña de un nuevo usuario con bcrypt y registra sus credenciales junto con su rol en la base de datos
 const register = async (req, res) => {
     try {
         const { id_empleado, username, password, rol } = req.body;
 
-        // 1. Encriptar la contraseña de forma segura
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        // 2. Insertar el usuario. Como id_usuario es SERIAL en Postgres, no necesitamos calcular el MAX().
         const sql = `
             INSERT INTO usuario_sistema (id_empleado, nombre_usuario, password_hash, rol, ultimo_acceso)
             VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)

@@ -1,9 +1,8 @@
-const db = require('../config/db'); // Importa tu conexión a PostgreSQL
+const db = require('../config/db');
 
+// Consulta un resumen financiero consolidado por sucursal que incluye el saldo actual de caja, el gasto en planilla y el valor total de los activos fijos activos
 const getFinancialAuditSummary = async (req, res) => {
     try {
-        // Consulta SQL adaptada a PostgreSQL:
-        // 1. Se usa COALESCE en lugar de NVL.
         const sql = `
             SELECT 
                 s.id_sucursal,
@@ -42,10 +41,9 @@ const getFinancialAuditSummary = async (req, res) => {
     }
 };
 
+// Consulta el historial completo de movimientos de caja registrados en todas las sucursales ordenados de forma descendente por fecha y hora
 const getCashFlowHistory = async (req, res) => {
     try {
-        // En PostgreSQL, las fechas se pueden retornar directamente o formatear con TO_CHAR si es estrictamente necesario,
-        // pero Postgres soporta TO_CHAR de manera muy similar a Oracle para tipos timestamp.
         const sql = `
             SELECT 
                 m.id_movimiento,

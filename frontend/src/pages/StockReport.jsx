@@ -183,7 +183,7 @@ const StockReport = () => {
                             </div>
 
                             <div className="stock-buttons-action-wrapper">
-                                <button type="submit" className="btn-ejecutar-busqueda">Ejecutar Búsqueda</button>
+                                <button type="submit" className="btn-ejecutar-busqueda">Ejecutar</button>
                                 <button type="button" onClick={() => setFiltros({id_sucursal:'', id_medicamento:''})} className="btn-limpiar-filtros">Limpiar</button>
                             </div>
                         </div>

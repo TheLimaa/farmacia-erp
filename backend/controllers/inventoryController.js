@@ -1,6 +1,6 @@
-const db = require('../config/db'); // Importa tu conexión a PostgreSQL
+const db = require('../config/db');
 
-// 1. Call Center (Consolidado sin restricción de fechas)
+// Consulta la disponibilidad de stock de un medicamento específico en todas las sucursales para el centro de llamadas, ordenando los resultados de mayor a menor cantidad disponible
 const checkStockForCallCenter = async (req, res) => {
     try {
         const { id_medicamento } = req.params;
@@ -23,7 +23,7 @@ const checkStockForCallCenter = async (req, res) => {
     }
 };
 
-// 2. Inventario General MB52
+// Consulta el inventario general disponible de medicamentos por sucursal con filtros opcionales de ubicación y producto
 const getInventarioGeneral = async (req, res) => {
     try {
         const { id_sucursal, id_medicamento } = req.query;
@@ -57,7 +57,7 @@ const getInventarioGeneral = async (req, res) => {
     }
 };
 
-// 3. Crear Medicamento (Soporta individual o listado masivo)
+// Registra uno o varios medicamentos nuevos en el catálogo del sistema
 const crearMedicamento = async (req, res) => {
     try {
         const { productos, nombre, descripcion, precio, requiere_receta } = req.body;
@@ -69,7 +69,6 @@ const crearMedicamento = async (req, res) => {
         for (const prod of listaProds) {
             if (!prod.nombre || !prod.precio) continue;
             
-            // Como id_medicamento es SERIAL, no se incluye en el INSERT
             const sql = `
                 INSERT INTO medicamento (nombre_comercial, descripcion, precio_unitario, requiere_receta) 
                 VALUES ($1, $2, $3, $4)
@@ -89,7 +88,7 @@ const crearMedicamento = async (req, res) => {
     }
 };
 
-// 4. Obtener Catálogo
+// Consulta la lista completa de medicamentos registrados en el catálogo ordenados por su identificador
 const getMedicamentos = async (req, res) => {
     try {
         const result = await db.query(`SELECT * FROM medicamento ORDER BY id_medicamento ASC`);
@@ -100,7 +99,7 @@ const getMedicamentos = async (req, res) => {
     }
 };
 
-// 5. Ingresar Stock (Soporta múltiples posiciones por documento)
+// Registra la entrada de stock en tránsito (lotes) para una sucursal, permitiendo procesar una o múltiples posiciones simultáneamente
 const ingresarStock = async (req, res) => {
     try {
         const { id_sucursal, posiciones, id_producto, cantidad, numero_lote, fecha_vencimiento } = req.body;
@@ -119,8 +118,6 @@ const ingresarStock = async (req, res) => {
             const sucTarget = pos.id_sucursal || targetSucursal;
             if (!pos.id_producto || !pos.cantidad || !pos.numero_lote || !pos.fecha_vencimiento) continue;
 
-            // id_lote es SERIAL, por lo que se omite. 
-            // PostgreSQL maneja la fecha directamente pasando el string 'YYYY-MM-DD'.
             const sql = `
                 INSERT INTO inventario_lote (id_sucursal, id_medicamento, cantidad, numero_lote, fecha_vencimiento, estado)
                 VALUES ($1, $2, $3, $4, $5, 'EN_TRANSITO')
@@ -144,7 +141,7 @@ const ingresarStock = async (req, res) => {
     }
 };
 
-// 6. MB5T - Ver Stock en Tránsito
+// Consulta los lotes de inventario que se encuentran actualmente en estado de tránsito con filtros opcionales de sucursal y producto
 const getStockEnTransito = async (req, res) => {
     try {
         const { id_sucursal, id_medicamento } = req.query;
@@ -178,7 +175,7 @@ const getStockEnTransito = async (req, res) => {
     }
 };
 
-// 7. MIGO - Recibir Mercancía (Cambia a DISPONIBLE)
+// Actualiza el estado de un lote en tránsito a disponible para confirmar la recepción de la mercancía en la sucursal
 const recibirStock = async (req, res) => {
     try {
         const { id_lote } = req.body;

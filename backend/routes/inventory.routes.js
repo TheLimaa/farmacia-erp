@@ -4,10 +4,10 @@ const { checkStockForCallCenter, crearMedicamento, ingresarStock, getMedicamento
 
 router.get('/medicamentos', getMedicamentos);
 router.get('/general', getInventarioGeneral);
-router.get('/transito', getStockEnTransito); // <--- Nueva
+router.get('/transito', getStockEnTransito);
 router.get('/stock/:id_medicamento', checkStockForCallCenter); 
 router.post('/producto', crearMedicamento); 
 router.post('/stock', ingresarStock); 
-router.put('/recibir', recibirStock); // <--- Nueva (PUT para actualizar)
+router.put('/recibir', recibirStock);
 
 module.exports = router;

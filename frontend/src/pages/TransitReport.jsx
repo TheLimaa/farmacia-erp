@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Cargando from '../components/Cargando'; // <--- Importamos la plantilla de carga
+import Cargando from '../components/Cargando';
 import { API_URL } from '../config/api';
 
 const TransitReport = () => {
     const navigate = useNavigate();
     
-    // --- LÓGICA DE ROLES Y SUCURSAL ---
+    // Saca al usuario del almacenamiento y define si cuenta con permisos de administrador
     const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
     const rolUsuario = (user.rol || user.ROL || '').toUpperCase();
     const esAdmin = rolUsuario === 'ADMINISTRADOR';
@@ -14,7 +14,7 @@ const TransitReport = () => {
     const [filtros, setFiltros] = useState({ id_sucursal: '', id_medicamento: '' });
     const [vistaResultados, setVistaResultados] = useState(false);
     const [stockTransito, setStockTransito] = useState([]);
-    const [cargando, setCargando] = useState(true); // <--- Estado de carga añadido
+    const [cargando, setCargando] = useState(true);
 
     const [catalogoMedicamentos, setCatalogoMedicamentos] = useState([]);
     const [catalogoSucursales, setCatalogoSucursales] = useState([]);
@@ -26,12 +26,12 @@ const TransitReport = () => {
     const sucursalRef = useRef(null);
     const materialRef = useRef(null);
 
+    // Carga los catálogos y verifica la sucursal del usuario al montar el componente
     useEffect(() => {
         const fetchCatalogosYPermisos = async () => {
             const tiempoMinimo = new Promise(resolve => setTimeout(resolve, 1000));
 
             try {
-                // Cargamos medicamentos, sucursales, permisos y los 2 segundos en paralelo
                 const [resMed, resSuc] = await Promise.all([
                     fetch(`${API_URL}/api/inventario/medicamentos`).then(res => res.json()).catch(() => ({ success: false })),
                     fetch(`${API_URL}/api/sucursales`).then(res => res.json()).catch(() => ({ success: false })),
@@ -67,6 +67,7 @@ const TransitReport = () => {
         };
         fetchCatalogosYPermisos();
 
+        // Cierra los menús desplegables al hacer clic fuera de ellos
         const handleClickOutside = (event) => {
             if (sucursalRef.current && !sucursalRef.current.contains(event.target)) setShowSucursalHelp(false);
             if (materialRef.current && !materialRef.current.contains(event.target)) setShowMaterialHelp(false);
@@ -75,7 +76,7 @@ const TransitReport = () => {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [esAdmin]);
 
-    // Filtros dinámicos manejando mayúsculas y minúsculas
+    // Filtra las sucursales según lo que el usuario vaya escribiendo
     const sucursalesFiltradas = catalogoSucursales.filter(s => {
         const query = (filtros.id_sucursal || '').toString().toLowerCase();
         const id = (s.ID_SUCURSAL || s.id_sucursal || '').toString();
@@ -83,6 +84,7 @@ const TransitReport = () => {
         return id.includes(query) || nombre.includes(query);
     });
 
+    // Filtra los medicamentos según el texto ingresado
     const medicamentosFiltrados = catalogoMedicamentos.filter(m => {
         const query = (filtros.id_medicamento || '').toString().toLowerCase();
         const id = (m.ID_MEDICAMENTO || m.id_medicamento || '').toString();
@@ -90,6 +92,7 @@ const TransitReport = () => {
         return id.includes(query) || nombre.includes(query);
     });
 
+    // Consulta el stock en tránsito aplicando los filtros seleccionados
     const buscarTransito = async (e) => {
         if (e) e.preventDefault();
         try {
@@ -106,6 +109,7 @@ const TransitReport = () => {
         } catch (error) { console.error('Error:', error); }
     };
 
+    // Confirma la recepción física de un lote en tránsito para sumarlo al inventario
     const handleRecibir = async (id_lote) => {
         if(!window.confirm("¿Confirmas la recepción física de este lote en la sucursal?")) return;
         try {
@@ -124,7 +128,7 @@ const TransitReport = () => {
         } catch (error) { console.error(error); }
     };
 
-    // Si está cargando inicialmente, mostramos la plantilla reutilizable
+    // Muestra la pantalla de carga mientras se obtienen los datos iniciales
     if (cargando) {
         return <Cargando mensaje="Cargando..." />;
     }
@@ -151,7 +155,6 @@ const TransitReport = () => {
                     <form onSubmit={buscarTransito} className="transit-filter-form">
                         <div className="transit-filter-fields-row">
                             
-                            {/* CENTRO RECEPTOR */}
                             <div ref={sucursalRef} className="transit-input-group">
                                 <label className="transit-input-label">Centro Receptor (ID Sucursal):</label>
                                 <input 
@@ -188,7 +191,6 @@ const TransitReport = () => {
                                 )}
                             </div>
 
-                            {/* MATERIAL */}
                             <div ref={materialRef} className="transit-input-group">
                                 <label className="transit-input-label">Producto (ID Producto):</label>
                                 <input 

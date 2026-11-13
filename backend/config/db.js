@@ -1,7 +1,6 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
-// Si existe DATABASE_URL (en Render), la usamos. Si no, armamos el objeto con variables individuales (en local).
 const connectionConfig = process.env.DATABASE_URL 
     ? {
         connectionString: process.env.DATABASE_URL,
@@ -26,7 +25,7 @@ const connectionConfig = process.env.DATABASE_URL
 
 const pool = new Pool(connectionConfig);
 
-// Función para probar e inicializar la conexión al arrancar el servidor
+// Establece una conexión de prueba con la base de datos PostgreSQL al iniciar el servidor y libera el cliente
 async function initialize() {
     try {
         const client = await pool.connect();
@@ -38,13 +37,13 @@ async function initialize() {
     }
 }
 
-// Función para cerrar el pool de conexiones al apagar el servidor (Graceful shutdown)
+// Cierra todas las conexiones activas del pool de PostgreSQL al apagar el servidor de forma segura
 async function close() {
     await pool.end();
     console.log('Pool de conexiones de PostgreSQL cerrado.');
 }
 
-// Función auxiliar para ejecutar consultas directas desde los controladores
+// Ejecuta consultas SQL directamente en la base de datos recibiendo el texto de la sentencia y sus parámetros opcionales
 async function query(text, params) {
     return await pool.query(text, params);
 }

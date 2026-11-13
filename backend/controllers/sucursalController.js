@@ -1,6 +1,6 @@
-const db = require('../config/db'); // Importa tu conexión a PostgreSQL
+const db = require('../config/db');
 
-// GET: Obtener todas las sucursales (incluyendo TIPO_UBICACION)
+// Consulta la lista completa de sucursales en la base de datos junto con su tipo, estado y el saldo actual de su caja asociada
 const obtenerSucursales = async (req, res) => {
     try {
         const sql = `
@@ -21,7 +21,7 @@ const obtenerSucursales = async (req, res) => {
     }
 };
 
-// POST: Crear nueva sucursal + asignar su caja automáticamente
+// Registra una nueva sucursal en el sistema y crea de forma automática su respectiva caja con saldos iniciales en cero
 const crearSucursal = async (req, res) => {
     try {
         const { nombre_ubicacion, tipo_ubicacion } = req.body;
@@ -29,7 +29,6 @@ const crearSucursal = async (req, res) => {
             return res.status(400).json({ success: false, message: 'El nombre de la sucursal es obligatorio.' });
         }
 
-        // 1. Insertar sucursal usando SERIAL y obteniendo el ID generado con RETURNING
         const sqlSucursal = `
             INSERT INTO sucursal (nombre_ubicacion, tipo_ubicacion, estado)
             VALUES ($1, $2, 'ACTIVO')
@@ -41,7 +40,6 @@ const crearSucursal = async (req, res) => {
         ]);
         const newIdSucursal = resSucursal.rows[0].id_sucursal;
 
-        // 2. Crear su caja automáticamente (id_caja es SERIAL también) con saldo_apertura y saldo_actual en 0.00
         const sqlCaja = `
             INSERT INTO caja_sucursal (id_sucursal, saldo_apertura, saldo_actual)
             VALUES ($1, 0.00, 0.00)
@@ -55,13 +53,12 @@ const crearSucursal = async (req, res) => {
     }
 };
 
-// PUT: Editar nombre, tipo de ubicación o cambiar estado (ACTIVO / INACTIVO)
+// Actualiza los datos generales o el estado operativo de una sucursal específica utilizando su identificador
 const actualizarSucursal = async (req, res) => {
     try {
         const { id } = req.params;
         const { nombre_ubicacion, tipo_ubicacion, estado } = req.body;
 
-        // Usamos COALESCE con parámetros posicionales para actualizar solo lo que venga en el body
         const sql = `
             UPDATE sucursal 
             SET nombre_ubicacion = COALESCE($1, nombre_ubicacion),
@@ -83,12 +80,11 @@ const actualizarSucursal = async (req, res) => {
     }
 };
 
-// DELETE: Eliminar sucursal y su caja
+// Elimina del sistema una sucursal junto con su caja asociada, validando posibles restricciones por dependencias de operaciones
 const eliminarSucursal = async (req, res) => {
     try {
         const { id } = req.params;
 
-        // Como hay integridad referencial o dependencias, eliminamos primero la caja asociada y luego la sucursal
         await db.query(`DELETE FROM caja_sucursal WHERE id_sucursal = $1`, [id]);
         await db.query(`DELETE FROM sucursal WHERE id_sucursal = $1`, [id]);
 
@@ -103,7 +99,7 @@ const eliminarSucursal = async (req, res) => {
 };
 
 module.exports = {
-    obtenerUsuarios: undefined, // no utilizado aquí
+    obtenerUsuarios: undefined,
     obtenerSucursales,
     crearSucursal,
     actualizarSucursal,

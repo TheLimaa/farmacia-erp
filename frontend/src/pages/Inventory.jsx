@@ -1,25 +1,25 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Cargando from '../components/Cargando'; // <--- Importamos la plantilla de carga
+import Cargando from '../components/Cargando';
 import { API_URL } from '../config/api';
 
 const Inventory = () => {
     const navigate = useNavigate();
     
-    // Control de Pestañas Activas ('entrada' | 'productos' | 'catalogo')
+    // Control de pestañas activas para alternar entre las vistas del módulo
     const [tabActiva, setTabActiva] = useState('entrada');
 
     const [producto, setProducto] = useState({ nombre: '', descripcion: '', precio: '', requiere_receta: 'NO' });
     const [mensaje, setMensaje] = useState('');
-    const [cargando, setCargando] = useState(true); // <--- Estado de carga añadido
+    const [cargando, setCargando] = useState(true);
     
-    // Buscador del Catálogo de Referencia
+    // Filtro de búsqueda para el catálogo de referencia
     const [filtroCatalogo, setFiltroCatalogo] = useState('');
 
-    // Encabezado del documento de entrada
+    // Almacena el código de la sucursal de destino para la entrada de mercancías
     const [idSucursalDestino, setIdSucursalDestino] = useState('');
 
-    // Tabla de posiciones dinámicas (Pos 10, 20, 30...)
+    // Lista de posiciones dinámicas para el registro masivo de stock
     const [posiciones, setPosiciones] = useState([
         { id: 1, id_producto: '', cantidad: '', numero_lote: '', fecha_vencimiento: '' }
     ]);
@@ -32,12 +32,12 @@ const Inventory = () => {
 
     const sucursalRef = useRef(null);
 
+    // Carga inicial de datos de medicamentos y sucursales en paralelo
     useEffect(() => {
         const inicializarDatos = async () => {
             const tiempoMinimo = new Promise(resolve => setTimeout(resolve, 1000));
 
             try {
-                // Cargamos el catálogo, las sucursales y garantizamos los 2 segundos en paralelo
                 const [resMed, resSuc] = await Promise.all([
                     fetch('' + API_URL + '/api/inventario/medicamentos').then(res => res.json()).catch(() => ({ success: false })),
                     fetch('' + API_URL + '/api/sucursales').then(res => res.json()).catch(() => ({ success: false })),
@@ -55,6 +55,7 @@ const Inventory = () => {
 
         inicializarDatos();
 
+        // Cierra los menús desplegables al hacer clic fuera de ellos
         const handleClickOutside = (event) => {
             if (sucursalRef.current && !sucursalRef.current.contains(event.target)) setShowSucursalHelp(false);
         };
@@ -62,6 +63,7 @@ const Inventory = () => {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    // Consulta la lista actualizada de medicamentos desde la API
     const cargarCatalogo = async () => {
         try {
             const res = await fetch('' + API_URL + '/api/inventario/medicamentos');
@@ -70,6 +72,7 @@ const Inventory = () => {
         } catch (error) { console.error('Error catálogo:', error); }
     };
 
+    // Consulta la lista actualizada de sucursales desde la API
     const cargarSucursales = async () => {
         try {
             const res = await fetch('' + API_URL + '/api/sucursales');
@@ -78,7 +81,7 @@ const Inventory = () => {
         } catch (error) { console.error('Error sucursales:', error); }
     };
 
-    // Agregar / Eliminar Posiciones
+    // Añade una nueva fila vacía a la tabla de posiciones
     const agregarPosicion = () => {
         setPosiciones(prev => [
             ...prev,
@@ -86,6 +89,7 @@ const Inventory = () => {
         ]);
     };
 
+    // Elimina una fila específica de la tabla de posiciones asegurando que quede al menos una
     const eliminarPosicion = (index) => {
         if (posiciones.length === 1) {
             alert('Debe haber al menos una posición en la entrada.');
@@ -94,6 +98,7 @@ const Inventory = () => {
         setPosiciones(prev => prev.filter((_, i) => i !== index));
     };
 
+    // Actualiza un campo específico dentro de una fila de posiciones
     const actualizarPosicion = (index, campo, valor) => {
         setPosiciones(prev => {
             const copy = [...prev];
@@ -102,13 +107,14 @@ const Inventory = () => {
         });
     };
 
-    // Filtros F4 Matchcode
+    // Filtra las sucursales según lo que el usuario vaya escribiendo
     const sucursalesFiltradas = catalogoSucursales.filter(s => {
         const id = (s.ID_SUCURSAL || s.id_sucursal || '').toString();
         const nombre = (s.NOMBRE_UBICACION || s.nombre_ubicacion || '').toLowerCase();
         return id.includes(idSucursalDestino) || nombre.includes(idSucursalDestino.toLowerCase());
     });
 
+    // Filtra los productos del catálogo según el texto ingresado en cada fila
     const getProductosFiltrados = (filtro) => {
         return catalogo.filter(m => {
             const id = (m.ID_MEDICAMENTO || m.id_medicamento || '').toString();
@@ -117,7 +123,7 @@ const Inventory = () => {
         });
     };
 
-    // Filtro corregido para el buscador del Catálogo de Referencia (Convierte ID a String de forma segura)
+    // Filtra los elementos del catálogo de referencia basándose en el término de búsqueda
     const catalogoFiltrado = catalogo.filter(med => {
         const id = String(med.ID_MEDICAMENTO || med.id_medicamento || '').toLowerCase();
         const nombre = String(med.NOMBRE_COMERCIAL || med.nombre_comercial || '').toLowerCase();
@@ -129,6 +135,7 @@ const Inventory = () => {
         return id.includes(busqueda) || nombre.includes(busqueda) || desc.includes(busqueda);
     });
 
+    // Envía los datos del nuevo producto al servidor para registrarlo en el catálogo
     const handleCrearProducto = async (e) => {
         e.preventDefault();
         setMensaje('');
@@ -151,11 +158,11 @@ const Inventory = () => {
         }
     };
 
+    // Valida la sucursal y las posiciones antes de enviar el lote de stock masivo al servidor
     const handleIngresarStockMasivo = async (e) => {
         e.preventDefault();
         setMensaje('');
 
-        // 1. Validar Sucursal Destino
         const sucursalEncontrada = catalogoSucursales.find(s => 
             (s.ID_SUCURSAL || s.id_sucursal || '').toString() === idSucursalDestino.trim()
         );
@@ -171,7 +178,6 @@ const Inventory = () => {
             return;
         }
 
-        // 2. Validar Posiciones
         for (let i = 0; i < posiciones.length; i++) {
             const pos = posiciones[i];
             const prodExistente = catalogo.find(m => 
@@ -196,7 +202,6 @@ const Inventory = () => {
             }
         }
 
-        // 3. Enviar lote al backend
         try {
             const res = await fetch('' + API_URL + '/api/inventario/stock', { 
                 method: 'POST', 
@@ -221,7 +226,7 @@ const Inventory = () => {
         }
     };
 
-    // Si está cargando, retornamos la plantilla reutilizable
+    // Muestra la pantalla de carga mientras se inicializan los datos
     if (cargando) {
         return <Cargando mensaje="Cargando..." />;
     }
@@ -237,7 +242,6 @@ const Inventory = () => {
             <h2 className="inventory-main-title">Gestión de Inventario y Catálogo</h2>
             <p className="inventory-main-subtitle">Contabilización de entradas y mantenimiento de productos.</p>
 
-            {/* Pestañas de Navegación Módulo-Módulo */}
             <div className="inventory-tabs-container">
                 <button 
                     onClick={() => { setTabActiva('entrada'); setMensaje(''); }} 
@@ -265,7 +269,6 @@ const Inventory = () => {
                 </div>
             )}
 
-            {/* VISTA 1: ENTRADA DE MERCANCÍAS */}
             {tabActiva === 'entrada' && (
                 <div className="inventory-card-section">
                     <form onSubmit={handleIngresarStockMasivo}>
@@ -428,7 +431,6 @@ const Inventory = () => {
                 </div>
             )}
 
-            {/* VISTA 2: CREAR MATERIAL */}
             {tabActiva === 'material' && (
                 <div className="inventory-card-section-narrow">
                     <form onSubmit={handleCrearProducto} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
@@ -462,7 +464,6 @@ const Inventory = () => {
                 </div>
             )}
 
-            {/* VISTA 3: CATÁLOGO DE REFERENCIA CON BUSCADOR */}
             {tabActiva === 'catalogo' && (
                 <div className="inventory-card-section">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>

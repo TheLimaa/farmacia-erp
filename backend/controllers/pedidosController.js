@@ -1,6 +1,6 @@
-const db = require('../config/db'); // Importa tu conexión a PostgreSQL
+const db = require('../config/db');
 
-// GET: Buscar BP (Cliente) por NIT
+// Consulta la información de un cliente (BP) en la base de datos utilizando su número de NIT
 const buscarCliente = async (req, res) => {
     try {
         const sql = `SELECT id_cliente, nombre_completo, telefono_contacto FROM cliente WHERE nit = $1`;
@@ -17,7 +17,7 @@ const buscarCliente = async (req, res) => {
     }
 };
 
-// GET: Buscar Medicamento para autocompletar posiciones
+// Consulta los datos detallados de un medicamento en el catálogo mediante su identificador para autocompletar posiciones
 const buscarMedicamento = async (req, res) => {
     try {
         const sql = `SELECT * FROM medicamento WHERE id_medicamento = $1`;
@@ -34,7 +34,7 @@ const buscarMedicamento = async (req, res) => {
     }
 };
 
-// GET: Buscar Sucursal por ID
+// Consulta la información general de una sucursal en la base de datos a partir de su identificador
 const buscarSucursal = async (req, res) => {
     try {
         const sql = `SELECT * FROM sucursal WHERE id_sucursal = $1`;
@@ -51,7 +51,7 @@ const buscarSucursal = async (req, res) => {
     }
 };
 
-// POST: Registrar Pedido Múltiple (CON VALIDACIÓN ESTRICTA DE STOCK Y REPARTIDOR)
+// Registra un nuevo pedido de entrega con múltiples posiciones validando estrictamente el stock disponible, la caja de la sucursal, asignando un repartidor, gestionando el cliente y descontando el inventario mediante FIFO
 const registrarPedido = async (req, res) => {
     try {
         const { id_sucursal, nit, cliente, telefono, direccion, metodo_pago, posiciones, id_repartidor } = req.body;
@@ -63,7 +63,6 @@ const registrarPedido = async (req, res) => {
         const finalNit = (nit === '' || nit === undefined) ? null : nit;
         let idClienteFinal = null;
 
-        // 1. VALIDAR STOCK DISPONIBLE
         for (let pos of posiciones) {
             const stockCheck = await db.query(
                 `SELECT COALESCE(SUM(cantidad), 0) as total_stock 
@@ -87,7 +86,6 @@ const registrarPedido = async (req, res) => {
             }
         }
 
-        // 2. VALIDACIÓN DE CAJA / SUCURSAL
         const cajaResult = await db.query(
             `SELECT id_caja FROM caja_sucursal WHERE id_sucursal = $1`,
             [id_sucursal]
@@ -96,7 +94,6 @@ const registrarPedido = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Esta sucursal no tiene una caja asignada.' });
         }
 
-        // 3. OBTENER REPARTIDOR DE LA SUCURSAL
         let idRepartidorFinal = id_repartidor;
 
         if (!idRepartidorFinal) {
@@ -134,7 +131,6 @@ const registrarPedido = async (req, res) => {
             }
         }
 
-        // 4. LÓGICA DEL CLIENTE (BP)
         if (finalNit) {
             const resultBP = await db.query(
                 `SELECT id_cliente FROM cliente WHERE nit = $1`, 
@@ -154,7 +150,6 @@ const registrarPedido = async (req, res) => {
             idClienteFinal = insertBP.rows[0].id_cliente;
         }
 
-        // 5. INSERTAR CABECERA DEL PEDIDO (id_pedido es SERIAL, RETURNING nos da su valor)
         const insertPedidoQuery = `
             INSERT INTO pedido_entrega (
                 id_cliente, id_sucursal_despacho, id_repartidor, 
@@ -173,7 +168,6 @@ const registrarPedido = async (req, res) => {
         ]);
         const newPedidoId = resultPedido.rows[0].id_pedido;
 
-        // 6. BUCLE DE POSICIONES (DETALLES E INVENTARIO FIFO)
         let numPosicion = 10;
 
         for (let pos of posiciones) {
@@ -208,7 +202,6 @@ const registrarPedido = async (req, res) => {
             }
         }
 
-        // --- 7. DISPARAR NOTIFICACIÓN PUSH AL REPARTIDOR ASIGNADO ---
         try {
             const resNombreRepartidor = await db.query(
                 `SELECT nombre_completo FROM empleado WHERE id_empleado = $1`,
@@ -219,8 +212,6 @@ const registrarPedido = async (req, res) => {
                 const emp = resNombreRepartidor.rows[0];
                 const nombreRepartidor = (emp.nombre_completo || 'Repartidor').trim();
                 
-                console.log(`Intentando enviar notificación push a repartidor: "${nombreRepartidor}"`);
-
                 if (global.enviarNotificacionRepartidor) {
                     global.enviarNotificacionRepartidor(
                         nombreRepartidor,
@@ -240,7 +231,7 @@ const registrarPedido = async (req, res) => {
     }
 };
 
-// GET: Consultar pedidos pendientes
+// Consulta la lista de todos los pedidos que aún no han sido entregados, calculando sus totales y ordenándolos de forma descendente
 const obtenerPendientes = async (req, res) => {
     try {
         const sql = `
@@ -271,7 +262,7 @@ const obtenerPendientes = async (req, res) => {
     }
 };
 
-// PUT: Confirmar Entrega de Pedido y Registrar Ingreso en Caja
+// Actualiza el estado de un pedido a entregado y registra el ingreso monetario correspondiente en la caja de la sucursal de despacho
 const entregarPedido = async (req, res) => {
     try {
         const idPedido = req.params.id;
@@ -337,7 +328,7 @@ const entregarPedido = async (req, res) => {
     }
 };
 
-// PUT: Cancelar Pedido y Revertir Stock a Inventario
+// Cancela un pedido existente que no haya sido entregado y revierte las cantidades de productos asociadas reincorporándolas al inventario de la sucursal
 const cancelarPedido = async (req, res) => {
     try {
         const idPedido = req.params.id;
@@ -393,7 +384,6 @@ const cancelarPedido = async (req, res) => {
                     [cantRevertir, idLote]
                 );
             } else {
-                // En PostgreSQL, para sumar 12 meses a la fecha actual se usa INTERVAL '12 month' o NOW() + INTERVAL '1 year'
                 await db.query(`
                     INSERT INTO inventario_lote (id_sucursal, id_medicamento, cantidad, numero_lote, fecha_vencimiento, estado)
                     VALUES ($1, $2, $3, 'RETORNO-CANCELACION', CURRENT_DATE + INTERVAL '12 months', 'DISPONIBLE')
@@ -417,7 +407,7 @@ const cancelarPedido = async (req, res) => {
     }
 };
 
-// GET: Consultar TODOS los pedidos
+// Consulta el registro completo de todos los pedidos ingresados en el sistema con sus detalles de cobro y fechas, ordenados de forma descendente
 const obtenerTodos = async (req, res) => {
     try {
         const sql = `
@@ -448,13 +438,12 @@ const obtenerTodos = async (req, res) => {
     }
 };
 
-// POST: Generar y Almacenar Factura en VENTA y DETALLE_VENTA
+// Genera una factura basada en un pedido completado registrando su cabecera en la tabla de ventas, copiando los detalles de productos y devolviendo la estructura completa del documento
 const generarFactura = async (req, res) => {
     try {
         const id_pedido = req.params.id;
         const { usuario_emision } = req.body;
 
-        // 1. Obtener la información general del pedido y su repartidor (empleado)
         const sqlPedido = `
             SELECT 
                 p.id_pedido, 
@@ -489,7 +478,6 @@ const generarFactura = async (req, res) => {
         const idSucursal = ped.id_sucursal_despacho;
         const idEmpleado = ped.id_repartidor;
 
-        // 2 & 3. Insertar cabecera en VENTA (id_venta es SERIAL, usando RETURNING)
         const insertVentaQuery = `
             INSERT INTO venta (
                 id_sucursal, id_empleado, 
@@ -507,7 +495,6 @@ const generarFactura = async (req, res) => {
         ]);
         let idVentaFinal = resIdVenta.rows[0].id_venta;
 
-        // 4. Copiar los productos del pedido a DETALLE_VENTA
         const sqlDetalles = `
             SELECT id_producto, cantidad, precio_unitario 
             FROM detalle_pedido 
@@ -530,7 +517,6 @@ const generarFactura = async (req, res) => {
 
         let fechaFacturacion = new Date();
 
-        // 5. Obtener los productos detallados usando NOMBRE_COMERCIAL de la tabla MEDICAMENTO
         const sqlItemsCompleto = `
             SELECT 
                 d.cantidad AS cantidad, 
@@ -543,7 +529,6 @@ const generarFactura = async (req, res) => {
         `;
         const resItems = await db.query(sqlItemsCompleto, [id_pedido]);
 
-        // Mapeo limpio para asegurar formato estandarizado (Postgres devuelve minúsculas)
         const productosProcesados = resItems.rows.map(item => ({
             cantidad: item.cantidad || 1,
             descripcion: item.descripcion || 'Medicamento',

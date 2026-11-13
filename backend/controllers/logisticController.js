@@ -1,5 +1,6 @@
-const db = require('../config/db'); // Importa tu conexión a PostgreSQL
+const db = require('../config/db');
 
+// Consulta la lista detallada de traslados internos entre sucursales indicando el origen, destino, estado y fecha de emisión, ordenados de forma descendente
 const getTraslados = async (req, res) => {
     try {
         const sql = `
@@ -22,12 +23,11 @@ const getTraslados = async (req, res) => {
     }
 };
 
+// Registra un nuevo traslado interno especificando las sucursales de origen y destino con un estado inicial en camino
 const createTraslado = async (req, res) => {
     try {
         const { id_suc_origen, id_suc_destino } = req.body;
         
-        // Al ser id_traslado una columna SERIAL, omitimos el cálculo manual de MAX()
-        // Y usamos parámetros posicionales ($1, $2)
         const sql = `
             INSERT INTO traslado_interno (id_suc_origen, id_suc_destino, estado_traslado)
             VALUES ($1, $2, 'EN_CAMINO')

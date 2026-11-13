@@ -7,6 +7,7 @@ import { API_URL } from '../config/api';
 const Dashboard = () => {
     const navigate = useNavigate();
     
+    // Obtiene los datos de la sesión actual del almacenamiento local o de sesión
     const sessionUser = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
     
     const [userData, setUserData] = useState({
@@ -17,6 +18,7 @@ const Dashboard = () => {
 
     const [cargando, setCargando] = useState(true);
 
+    // Consulta los detalles actualizados del usuario en la base de datos al montar el componente
     useEffect(() => {
         const obtenerDetallesUsuario = async () => {
             const usuarioBuscado = (sessionUser.usuario || sessionUser.username || sessionUser.nombre || '').toString().toLowerCase();
@@ -60,6 +62,7 @@ const Dashboard = () => {
         obtenerDetallesUsuario();
     }, []);
 
+    // Limpia todo el almacenamiento del navegador y redirige al usuario a la pantalla de inicio de sesión
     const handleLogout = () => {
         localStorage.clear();
         sessionStorage.clear();
@@ -74,6 +77,7 @@ const Dashboard = () => {
         'ADMINISTRADOR': ['*']
     };
 
+    // Verifica si el rol del usuario cuenta con permisos para acceder a una ruta específica
     const tienePermiso = (ruta) => {
         const rolUsuario = (userData.rol || '').toUpperCase();
         const permisos = permisosPorRol[rolUsuario] || [];
@@ -82,6 +86,7 @@ const Dashboard = () => {
         return permisos.includes(ruta);
     };
 
+    // Muestra la pantalla de carga mientras se obtienen los datos del usuario
     if (cargando) {
         return <Cargando mensaje="Cargando..." />;
     }
@@ -89,7 +94,6 @@ const Dashboard = () => {
     return (
         <div className="dashboard-container">
             
-            {/* Barra Superior con Logo Más Grande */}
             <div className="dashboard-topbar">
                 <div className="dashboard-topbar-title-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                     <img 
@@ -107,18 +111,15 @@ const Dashboard = () => {
                 </div>
             </div>
 
-            {/* Sub-barra de navegación */}
             <div className="dashboard-subnav">
                 ≡ &nbsp; INICIO
             </div>
 
-            {/* Contenido Principal / Fichas (Tiles) */}
             <div className="dashboard-content">
                 <h3 className="dashboard-section-title">Páginas Operativas</h3>
 
                 <div className="dashboard-tiles-grid">
                     
-                    {/* Ficha 1: Gestión de Inventarios y Catálogo */}
                     {tienePermiso('/registros-medicamento') && (
                         <div 
                             onClick={() => navigate('/registros-medicamento')}
@@ -130,7 +131,6 @@ const Dashboard = () => {
                         </div>
                     )}
 
-                    {/* Ficha 2: Visualizar Stocks */}
                     {tienePermiso('/stock') && (
                         <div 
                             onClick={() => navigate('/stock')}
@@ -142,7 +142,6 @@ const Dashboard = () => {
                         </div>
                     )}
 
-                    {/* Ficha 3: Stock en Tránsito */}
                     {tienePermiso('/transito') && (
                         <div 
                             onClick={() => navigate('/transito')}
@@ -154,7 +153,6 @@ const Dashboard = () => {
                         </div>
                     )}
 
-                    {/* Ficha 4: Recursos Humanos */}
                     {tienePermiso('/rrhh') && (
                         <div 
                             onClick={() => navigate('/rrhh')}
@@ -166,7 +164,6 @@ const Dashboard = () => {
                         </div>
                     )}
 
-                    {/* Ficha 5: Call Center y Pedidos */}
                     {tienePermiso('/call-center') && (
                         <div 
                             onClick={() => navigate('/call-center')}
@@ -178,7 +175,6 @@ const Dashboard = () => {
                         </div>
                     )}
 
-                    {/* Ficha 6: Logística Delivery */}
                     {tienePermiso('/delivery') && (
                         <div 
                             onClick={() => navigate('/delivery')}
@@ -190,7 +186,6 @@ const Dashboard = () => {
                         </div>
                     )}
 
-                    {/* Ficha 7: Sucursales */}
                     {tienePermiso('/sucursales') && (
                         <div 
                             onClick={() => navigate('/sucursales')}
@@ -202,7 +197,6 @@ const Dashboard = () => {
                         </div>
                     )}
 
-                    {/* Ficha 8: Activos Fijos */}
                     {tienePermiso('/activos-fijos') && (
                         <div 
                             onClick={() => navigate('/activos-fijos')}
@@ -214,7 +208,6 @@ const Dashboard = () => {
                         </div>
                     )}
 
-                     {/* Ficha 9: Auditoria */}
                      {tienePermiso('/auditoria') && (
                         <div 
                             onClick={() => navigate('/auditoria')}
@@ -226,7 +219,6 @@ const Dashboard = () => {
                         </div>
                     )}
 
-                    {/* Ficha 10: Usuarios del sistema */}
                     {tienePermiso('/usuarios') && (
                         <div 
                             onClick={() => navigate('/usuarios')}

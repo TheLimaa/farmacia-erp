@@ -1,8 +1,8 @@
-const db = require('../config/db'); // Importa tu conexión a PostgreSQL
+const db = require('../config/db');
 
+// Consulta las métricas generales del tablero principal, incluyendo la inversión total en activos, el efectivo acumulado en cajas, las entregas activas y los traslados en curso
 const getDashboardMetrics = async (req, res) => {
     try {
-        // En PostgreSQL no se necesita 'FROM dual'
         const sql = `
             SELECT 
                 (SELECT COALESCE(SUM(valor_inicial), 0) FROM activo_fijo) as total_inversion,
@@ -12,7 +12,6 @@ const getDashboardMetrics = async (req, res) => {
         `;
         const result = await db.query(sql);
         
-        // PostgreSQL devuelve las columnas en minúsculas por defecto
         res.status(200).json({ success: true, data: result.rows[0] });
     } catch (error) {
         console.error('Error al obtener métricas del dashboard:', error);

@@ -1,18 +1,18 @@
 import { useState, useEffect } from 'react';
 import { getTraslados } from '../services/logisticService';
-import Cargando from '../components/Cargando'; // <--- Importamos la plantilla de carga
+import Cargando from '../components/Cargando';
 
 
 const Logistic = () => {
     const [traslados, setTraslados] = useState([]);
-    const [cargando, setCargando] = useState(true); // <--- Estado de carga añadido
+    const [cargando, setCargando] = useState(true);
 
+    // Carga los traslados y asegura un tiempo mínimo de espera de forma paralela al iniciar
     useEffect(() => {
         const cargarDatos = async () => {
             const tiempoMinimo = new Promise(resolve => setTimeout(resolve, 1000));
 
             try {
-                // Ejecutamos la petición del servicio y el temporizador en paralelo
                 const [data] = await Promise.all([
                     getTraslados(),
                     tiempoMinimo
@@ -30,7 +30,7 @@ const Logistic = () => {
         cargarDatos();
     }, []);
 
-    // Si está cargando, retornamos la plantilla reutilizable
+    // Muestra la pantalla de carga mientras se obtienen los datos de los traslados
     if (cargando) {
         return <Cargando mensaje="Cargando..." />;
     }

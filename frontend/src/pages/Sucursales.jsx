@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Cargando from '../components/Cargando'; // <--- Importamos la plantilla de carga
+import Cargando from '../components/Cargando';
 import { API_URL } from '../config/api';
 
 const Sucursales = () => {
@@ -9,16 +9,15 @@ const Sucursales = () => {
     const [mensaje, setMensaje] = useState('');
     const [cargando, setCargando] = useState(true);
 
-    // Verificación de Rol (Admin)
     const usuarioSesion = JSON.parse(localStorage.getItem('usuario') || '{}');
     const esAdmin = usuarioSesion.rol === 'ADMIN' || usuarioSesion.ROL === 'ADMIN' || usuarioSesion.rol === 'ADMINISTRADOR';
 
-    // Estados para Formulario / Modal
     const [modalAbierto, setModalAbierto] = useState(false);
     const [editandoId, setEditandoId] = useState(null);
     const [nombreUbicacion, setNombreUbicacion] = useState('');
     const [tipoUbicacion, setTipoUbicacion] = useState('FARMACIA');
 
+    // Carga inicial de datos de sucursales en paralelo junto con un tiempo mínimo de espera
     useEffect(() => {
         const inicializarDatos = async () => {
             const tiempoMinimo = new Promise(resolve => setTimeout(resolve, 1000));
@@ -44,6 +43,7 @@ const Sucursales = () => {
         inicializarDatos();
     }, []);
 
+    // Consulta la lista actualizada de sucursales desde la API
     const cargarSucursales = async () => {
         try {
             const res = await fetch('' + API_URL + '/api/sucursales');
@@ -55,6 +55,7 @@ const Sucursales = () => {
         }
     };
 
+    // Abre el modal configurado para registrar una nueva sucursal
     const abrirModalCrear = () => {
         setEditandoId(null);
         setNombreUbicacion('');
@@ -62,6 +63,7 @@ const Sucursales = () => {
         setModalAbierto(true);
     };
 
+    // Abre el modal cargando los datos de la sucursal seleccionada para su edición
     const abrirModalEditar = (suc) => {
         setEditandoId(suc.ID_SUCURSAL || suc.id_sucursal);
         setNombreUbicacion(suc.NOMBRE_UBICACION || suc.nombre_ubicacion);
@@ -69,6 +71,7 @@ const Sucursales = () => {
         setModalAbierto(true);
     };
 
+    // Envía los datos del formulario para crear o actualizar una sucursal en el servidor
     const guardarSucursal = async (e) => {
         e.preventDefault();
         const url = editandoId 
@@ -100,6 +103,7 @@ const Sucursales = () => {
         }
     };
 
+    // Alterna el estado operativo (activo/inactivo) de una sucursal
     const cambiarEstado = async (id, estadoActual) => {
         const nuevoEstado = estadoActual === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO';
         try {
@@ -119,6 +123,7 @@ const Sucursales = () => {
         }
     };
 
+    // Elimina una sucursal del sistema previa confirmación
     const eliminarSucursal = async (id) => {
         if (!window.confirm(`¿Está seguro de eliminar la sucursal ID ${id}?`)) return;
         try {
@@ -136,7 +141,6 @@ const Sucursales = () => {
         }
     };
 
-    // Bloqueo de acceso si no es Administrador
     if (!esAdmin && usuarioSesion.rol) {
         return (
             <div className="sucursales-denegado-container">
@@ -149,7 +153,7 @@ const Sucursales = () => {
         );
     }
 
-    // Si está cargando inicialmente, mostramos la plantilla reutilizable
+    // Muestra la pantalla de carga mientras se obtienen los datos iniciales
     if (cargando) {
         return <Cargando mensaje="Cargando..." />;
     }
@@ -157,7 +161,6 @@ const Sucursales = () => {
     return (
         <div className="sucursales-container">
             
-            {/* Cabecera */}
             <div className="sucursales-header-bar">
                 <div className="sucursales-title-wrapper">
                     <button onClick={() => navigate('/dashboard')} className="btn-regresar-sucursales">❮</button>
@@ -174,7 +177,6 @@ const Sucursales = () => {
                 </div>
             )}
 
-            {/* Tabla de Sucursales */}
             <div className="sucursales-card-tabla">
                 <table className="sucursales-tabla">
                     <thead>
@@ -230,7 +232,6 @@ const Sucursales = () => {
                 </table>
             </div>
 
-            {/* Modal para Crear / Editar */}
             {modalAbierto && (
                 <div className="sucursales-modal-overlay">
                     <div className="sucursales-modal-content">

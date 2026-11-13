@@ -1,7 +1,7 @@
-const db = require('../config/db'); // Importa tu conexión a PostgreSQL
-const bcrypt = require('bcryptjs'); // O 'bcrypt' según tu package.json
+const db = require('../config/db');
+const bcrypt = require('bcryptjs');
 
-// GET: Listar usuarios con los datos del empleado asociado
+// Consulta la lista completa de usuarios del sistema junto con los datos del empleado asociado y su sucursal, ordenados de forma ascendente por identificador
 const obtenerUsuarios = async (req, res) => {
     try {
         const sql = `
@@ -26,7 +26,7 @@ const obtenerUsuarios = async (req, res) => {
     }
 };
 
-// GET: Buscar datos de un empleado por ID para autodetectar puesto/rol
+// Consulta la información detallada de un empleado por su identificador para autodetectar sus datos y sugerir un rol en el sistema basado en su puesto
 const obtenerEmpleadoParaUsuario = async (req, res) => {
     try {
         const { id } = req.params;
@@ -44,7 +44,6 @@ const obtenerEmpleadoParaUsuario = async (req, res) => {
         }
 
         const emp = result.rows[0];
-        // En PostgreSQL los campos devueltos vienen en minúsculas por defecto
         const puestoUpper = (emp.puesto || '').toUpperCase();
         
         let rolSugerido = 'OPERADOR';
@@ -62,7 +61,7 @@ const obtenerEmpleadoParaUsuario = async (req, res) => {
     }
 };
 
-// POST: Crear nuevo Usuario de Sistema con Encriptación BCrypt
+// Registra un nuevo usuario del sistema asociándolo a un empleado válido, validando que el nombre de usuario no esté en uso y encriptando su contraseña con bcrypt
 const crearUsuario = async (req, res) => {
     try {
         const { id_empleado, username, password, rol } = req.body;
@@ -71,7 +70,6 @@ const crearUsuario = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Debe asociar un empleado válido.' });
         }
 
-        // 1. Validar si el nombre de usuario ya existe (usando LOWER para búsqueda insensible a mayúsculas)
         const checkUser = await db.query(
             `SELECT id_usuario FROM usuario_sistema WHERE LOWER(nombre_usuario) = LOWER($1)`,
             [username]
@@ -81,11 +79,9 @@ const crearUsuario = async (req, res) => {
             return res.status(400).json({ success: false, message: 'El nombre de usuario ya está en uso.' });
         }
 
-        // 2. ENCRIPTAR LA CONTRASEÑA CON BCRYPT
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash(password, salt);
 
-        // 3. Insertar el Hash en la base de datos (id_usuario es SERIAL, se omite del INSERT)
         const sql = `
             INSERT INTO usuario_sistema (id_empleado, nombre_usuario, password_hash, rol)
             VALUES ($1, $2, $3, $4)
@@ -105,7 +101,7 @@ const crearUsuario = async (req, res) => {
     }
 };
 
-// DELETE: Eliminar únicamente la cuenta de usuario
+// Elimina únicamente la cuenta de acceso de un usuario del sistema utilizando su identificador
 const eliminarUsuario = async (req, res) => {
     try {
         const { id } = req.params;

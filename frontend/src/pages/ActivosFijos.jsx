@@ -6,14 +6,14 @@ import { API_URL } from '../config/api';
 const ActivosFijos = () => {
     const navigate = useNavigate();
     
-    // --- LÓGICA DE ROLES CORREGIDA ---
+    // Saca al usuario del almacenamiento y define si tiene permisos de administrador
     const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
     const rolUsuario = (user.rol || user.ROL || '').toUpperCase();
     const esAdmin = rolUsuario === 'ADMINISTRADOR';
 
     const [activos, setActivos] = useState([]);
     const [mensaje, setMensaje] = useState('');
-    const [cargando, setCargando] = useState(true); // <--- Estado de carga añadido
+    const [cargando, setCargando] = useState(true);
     
     // Estados para el buscador de sucursales (Solo Admin)
     const [sucursales, setSucursales] = useState([]);
@@ -33,11 +33,11 @@ const ActivosFijos = () => {
     });
 
     useEffect(() => {
+        // Carga de datos iniciales en paralelo con un tiempo mínimo de espera
         const inicializarDatos = async () => {
             const tiempoMinimo = new Promise(resolve => setTimeout(resolve, 1000));
 
             try {
-                // Ejecutamos las peticiones y los 2 segundos mínimos en paralelo
                 const [resActivos, resSucursalesOrUser] = await Promise.all([
                     fetch('' + API_URL + '/api/activos').then(res => res.json()).catch(() => ({ success: false })),
                     esAdmin 
@@ -76,6 +76,7 @@ const ActivosFijos = () => {
 
         inicializarDatos();
 
+        // Cierra el menú desplegable de sucursales si hace clic afuera
         const handleClickOutside = (e) => {
             if (refSucursales.current && !refSucursales.current.contains(e.target)) {
                 setShowSucursales(false);
@@ -85,6 +86,7 @@ const ActivosFijos = () => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [esAdmin]);
 
+    // Trae la lista actualizada de todos los activos fijos desde la API
     const cargarActivos = async () => {
         try {
             const res = await fetch('' + API_URL + '/api/activos');
@@ -93,6 +95,7 @@ const ActivosFijos = () => {
         } catch (error) { console.error('Error al cargar activos:', error); }
     };
 
+    // Envía los datos del formulario para registrar un nuevo activo en el sistema
     const handleRegistrar = async (e) => {
         e.preventDefault();
         if (!esAdmin) return;
@@ -123,6 +126,7 @@ const ActivosFijos = () => {
         }
     };
 
+    // Actualiza el estado operativo de un activo fijo previa confirmación
     const handleEstadoChange = async (id, nuevoEstado) => {
         const confirmar = window.confirm(`¿Estás seguro que deseas cambiar el estado de este activo a "${nuevoEstado.replace('_', ' ')}"?\n\nEsto puede afectar el cálculo del patrimonio total.`);
         
@@ -143,12 +147,14 @@ const ActivosFijos = () => {
         }
     };
 
+    // Filtra las sucursales según lo que el administrador vaya escribiendo
     const sucursalesFiltradas = sucursales.filter(s => {
         const id = s.ID_SUCURSAL || s.id_sucursal;
         const nombre = s.NOMBRE_UBICACION || s.nombre_ubicacion;
         return id?.toString().includes(busquedaSucursal) || nombre?.toLowerCase().includes(busquedaSucursal.toLowerCase());
     });
 
+    // Filtra los activos que se muestran en la tabla dependiendo del rol y la sucursal seleccionada
     const activosVisibles = activos.filter(a => {
         if (!esAdmin) {
             if (gerenteSucursalNombre) {
@@ -165,6 +171,7 @@ const ActivosFijos = () => {
         return true;
     });
 
+    // Suma el valor de compra de todos los activos visibles que no estén dados de baja
     const patrimonioTotal = activosVisibles
         .filter(a => {
             const estado = a.ESTADO || a.estado;
@@ -172,7 +179,7 @@ const ActivosFijos = () => {
         })
         .reduce((sum, a) => sum + parseFloat(a.VALOR_COMPRA || a.valor_compra || 0), 0);
 
-    // Si está cargando, retornamos la plantilla reutilizable con su respectivo mensaje
+    // Muestra la pantalla de carga mientras se obtienen los datos iniciales
     if (cargando) {
         return <Cargando mensaje="Cargando..." />;
     }
@@ -198,7 +205,7 @@ const ActivosFijos = () => {
 
             <div className="grid-superior">
                 
-                {/* Formulario de Registro - SOLO VISIBLE PARA ADMIN */}
+                {/* Formulario para dar de alta nuevos activos, solo visible para el admin */}
                 {esAdmin && (
                     <div className="card-formulario">
                         <h3>Registrar Nueva Adquisición</h3>
@@ -289,7 +296,7 @@ const ActivosFijos = () => {
                     </div>
                 )}
 
-                {/* Resumen Financiero Rápido */}
+                {/* Tarjeta que muestra el cálculo total del patrimonio */}
                 <div className="card-resumen" style={{ flex: esAdmin ? 1 : 'none', width: esAdmin ? 'auto' : '100%' }}>
                     <div className="card-resumen-icono">🏢</div>
                     <h3>Valor Total del Patrimonio</h3>
@@ -305,7 +312,7 @@ const ActivosFijos = () => {
                 </div>
             </div>
 
-            {/* Tabla de Activos */}
+            {/* Tabla que despliega el inventario de activos */}
             <div className="card-tabla">
                 <div className="tabla-header-container">
                     <h3>

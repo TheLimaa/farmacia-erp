@@ -1,12 +1,12 @@
 import axios from 'axios';
 import { API_URL } from '../config/api';
 
-// Si necesitas un prefijo para logística, usa otro nombre, por ejemplo:
-const LOGISTIC_API = API_URL + '/api/logistic'; // (o como tengas tu ruta)
+const LOGISTIC_API = API_URL + '/api/logistic';
 
+// Pide al servidor la lista completa de traslados logísticos y devuelve los datos obtenidos
 export const getTraslados = async () => {
     try {
-        const response = await axios.get(`${LOGISTIC_API}/traslados`); // o la ruta que uses
+        const response = await axios.get(`${LOGISTIC_API}/traslados`);
         return response.data.data;
     } catch (error) {
         console.error("Error al obtener traslados:", error);

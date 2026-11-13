@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Cargando from '../components/Cargando'; // <--- Importamos la plantilla de carga
+import Cargando from '../components/Cargando';
 import { API_URL } from '../config/api';
 
 const CallCenter = () => {
@@ -9,7 +9,7 @@ const CallCenter = () => {
 
     const [catalogo, setCatalogo] = useState([]);
     const [sucursales, setSucursales] = useState([]);
-    const [cargando, setCargando] = useState(true); // <--- Estado de carga añadido
+    const [cargando, setCargando] = useState(true);
 
     const [dropdownSucursal, setDropdownSucursal] = useState(false);
     const [dropdownPosicion, setDropdownPosicion] = useState(null); 
@@ -33,13 +33,12 @@ const CallCenter = () => {
     const subtotal = posiciones.reduce((sum, item) => sum + (item.precio * (item.cantidad || 0)), 0);
     const totalDocumento = subtotal > 0 ? subtotal + 25 : 0; 
 
-    // --- CARGAR LISTAS ---
+    // Carga los catálogos de medicamentos y sucursales en paralelo al iniciar
     useEffect(() => {
         const cargarListas = async () => {
             const tiempoMinimo = new Promise(resolve => setTimeout(resolve, 1000));
 
             try {
-                // Cargamos medicamentos, sucursales y garantizamos el tiempo mínimo en paralelo
                 const [resMed, resSuc] = await Promise.all([
                     fetch(`${API_URL}/api/inventario/medicamentos`).then(res => res.json()).catch(() => ({ success: false })),
                     fetch(`${API_URL}/api/sucursales`).then(res => res.json()).catch(() => ({ success: false })),
@@ -57,7 +56,7 @@ const CallCenter = () => {
         cargarListas();
     }, []);
 
-    // --- BÚSQUEDA AUTOMÁTICA DEL BP AL ESCRIBIR EL NIT ---
+    // Busca los datos del cliente automáticamente en la base de datos al ingresar el NIT o código
     const buscarBP = async (nitBusqueda) => {
         if (!nitBusqueda || orden.esCF) return;
         
@@ -83,7 +82,7 @@ const CallCenter = () => {
         }
     };
 
-    // --- MANEJO DE LA TABLA DINÁMICA ---
+    // Añade una nueva fila de producto a la tabla de posiciones del pedido
     const agregarPosicion = () => {
         const ultimaPos = posiciones.length > 0 ? posiciones[posiciones.length - 1].pos : 0;
         setPosiciones([
@@ -92,17 +91,19 @@ const CallCenter = () => {
         ]);
     };
 
+    // Elimina una fila específica de la tabla de posiciones según su identificador
     const eliminarPosicion = (id_row) => {
         setPosiciones(posiciones.filter(p => p.id_row !== id_row));
     };
 
+    // Actualiza el valor de un campo específico dentro de una fila del pedido
     const actualizarFila = (index, campo, valor) => {
         const nuevasPosiciones = [...posiciones];
         nuevasPosiciones[index][campo] = valor;
         setPosiciones(nuevasPosiciones);
     };
 
-    // --- LÓGICA DE AUTOCOMPLETADO (ENTER) ---
+    // Selecciona automáticamente la sucursal al presionar la tecla Enter en el campo de búsqueda
     const handleKeyDownSucursal = (e) => {
         if (e.key === 'Enter') {
             e.preventDefault(); 
@@ -129,6 +130,7 @@ const CallCenter = () => {
         }
     };
 
+    // Selecciona automáticamente el producto del catálogo al presionar la tecla Enter en la tabla
     const handleKeyDownProducto = (e, index, textoBuscado) => {
         if (e.key === 'Enter') {
             e.preventDefault(); 
@@ -161,7 +163,7 @@ const CallCenter = () => {
         }
     };
 
-    // --- ENVIAR AL BACKEND Y MANEJAR RESPUESTA ---
+    // Valida los datos y envía el pedido completo al servidor para registrarlo en la base de datos
     const registrarPedido = async (e) => {
         e.preventDefault();
         
@@ -205,7 +207,7 @@ const CallCenter = () => {
         }
     };
 
-    // Si está cargando, retornamos la plantilla reutilizable
+    // Muestra la pantalla de carga mientras se obtienen los datos iniciales
     if (cargando) {
         return <Cargando mensaje="Cargando..." />;
     }
@@ -220,7 +222,6 @@ const CallCenter = () => {
                 </div>
             </div>
 
-            {/* SECCIÓN DE ALERTA DINÁMICA */}
             {mensaje && (
                 <div className={`alerta-mensaje ${mensaje.includes('❌') ? 'error' : mensaje.includes('⚠️') ? 'advertencia' : 'exito'}`}>
                     {mensaje}
@@ -230,7 +231,6 @@ const CallCenter = () => {
             <form onSubmit={registrarPedido}>
                 
                 <div className="seccion-formularios-grid">
-                    {/* SECCIÓN: SOLICITANTE */}
                     <div className="card-solicitante">
                         <h3 className="card-title">Datos del Solicitante</h3>
                         
@@ -267,14 +267,12 @@ const CallCenter = () => {
                         </div>
                     </div>
 
-                    {/* SECCIÓN: APROVISIONAMIENTO */}
                     <div className="card-aprovisionamiento">
                         <h3 className="card-title">Aprovisionamiento y Pago</h3>
                         
                         <div className="form-field-row-aprov">
                             <label className="form-label">Centro sumin.:*</label>
                             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                                {/* BUSCADOR PREDICTIVO SUCURSAL */}
                                 <div className="buscador-predictivo-container">
                                     <input 
                                         type="text" 
@@ -340,7 +338,6 @@ const CallCenter = () => {
                     </div>
                 </div>
 
-                {/* SECCIÓN: TABLA DE POSICIONES */}
                 <div className="card-tabla-posiciones">
                     <div className="tabla-acciones-bar">
                         <button type="button" onClick={agregarPosicion} className="btn-agregar-posicion">
@@ -366,7 +363,6 @@ const CallCenter = () => {
                                     <tr key={row.id_row} style={{ position: 'relative' }}>
                                         <td className="td-pos-numero">{row.pos}</td>
                                         
-                                        {/* BUSCADOR PREDICTIVO PRODUCTOS */}
                                         <td style={{ position: 'relative', overflow: 'visible' }}>
                                             <input 
                                                 type="text" 

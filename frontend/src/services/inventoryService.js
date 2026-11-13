@@ -1,8 +1,8 @@
 import { API_URL } from '../config/api';
 
-// URL base de tu backend local
 const API_URL = '' + API_URL + '/api';
 
+// Consulta al servidor el inventario y disponibilidad de stock de un medicamento específico mediante su identificador
 export const checkProductStock = async (idMedicamento) => {
     try {
         const response = await fetch(`${API_URL}/inventory/stock/${idMedicamento}`);

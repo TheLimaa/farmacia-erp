@@ -6,6 +6,7 @@ import { API_URL } from '../config/api';
 const Delivery = () => {
     const navigate = useNavigate();
     
+    // Obtiene los datos de la sesión del usuario y define si cuenta con privilegios de administrador
     const user = JSON.parse(sessionStorage.getItem('user') || localStorage.getItem('user') || '{}');
     const rolUsuario = (user.rol || user.ROL || '').toUpperCase();
     const esAdmin = rolUsuario === 'ADMINISTRADOR';
@@ -16,6 +17,7 @@ const Delivery = () => {
     const [sucursalUsuario, setSucursalUsuario] = useState('');
     const [cargando, setCargando] = useState(true);
     
+    // Genera la fecha actual en formato de texto estándar
     const obtenerFechaHoy = () => {
         const hoy = new Date();
         return hoy.toISOString().split('T')[0];
@@ -24,6 +26,7 @@ const Delivery = () => {
     const [fechaInicio, setFechaInicio] = useState(obtenerFechaHoy());
     const [fechaFin, setFechaFin] = useState(obtenerFechaHoy());
 
+    // Carga la información de los pedidos y la sucursal del usuario al montar el componente
     useEffect(() => {
         const cargarDatos = async () => {
             const tiempoMinimo = new Promise(resolve => setTimeout(resolve, 1000));
@@ -67,10 +70,12 @@ const Delivery = () => {
         cargarDatos();
     }, [esAdmin]);
 
+    // Vuelve a aplicar los filtros cada vez que cambian las fechas o los datos de los pedidos
     useEffect(() => {
         aplicarFiltro(pedidosOriginales);
     }, [fechaInicio, fechaFin, pedidosOriginales, sucursalUsuario]);
 
+    // Filtra la lista de pedidos según el rol del usuario y la sucursal correspondiente
     const aplicarFiltro = (listaPedidos) => {
         if (!fechaInicio || !fechaFin) {
             setPedidosFiltrados([]);
@@ -84,17 +89,19 @@ const Delivery = () => {
                     return false;
                 }
             }
-            return true; // Mostramos los pedidos sin bloqueo estricto de fecha para que sean visibles de inmediato
+            return true;
         });
 
         setPedidosFiltrados(filtrados);
     };
 
+    // Restablece los filtros de fecha al día actual
     const limpiarFiltros = () => {
         setFechaInicio(obtenerFechaHoy());
         setFechaFin(obtenerFechaHoy());
     };
 
+    // Actualiza el estado de un pedido a entregado tras la confirmación
     const handleEntregar = async (idPedido) => {
         if (!window.confirm(`¿Confirmar la entrega exitosa del pedido #${idPedido}?`)) return;
         
@@ -116,6 +123,7 @@ const Delivery = () => {
         }
     };
 
+    // Cancela un pedido seleccionado y devuelve el stock al inventario
     const handleCancelar = async (idPedido) => {
         if (!window.confirm(`¿Está seguro de cancelar el pedido #${idPedido}? El stock será devuelto al inventario.`)) return;
         
@@ -137,6 +145,7 @@ const Delivery = () => {
         }
     };
 
+    // Muestra la pantalla de carga mientras se obtienen los datos necesarios
     if (cargando) {
         return <Cargando mensaje="Cargando..." />;
     }
@@ -218,7 +227,7 @@ const Delivery = () => {
                                         <td className="td-sucursal-origen">{sucursalReal}</td>
                                         <td className={`td-estado-pedido ${estadoClase}`}>{estadoPed}</td>
                                         <td className="align-right" style={{ fontWeight: 'bold' }}>
-                                            {isCancelado ? <span className="total-tachado">Q {totalReal.toFixed(2)}</span> : `Q ${totalReal.toFixed(2)}`}
+                                            {isCancelado ? <span className="total-tachado">Q {totalReal.toFixed(2)}</span> : `Q {totalReal.toFixed(2)}`}
                                         </td>
                                         <td className="align-center">
                                             <span className="badge-metodo-pago">{metodoReal}</span>

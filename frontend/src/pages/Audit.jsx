@@ -7,6 +7,7 @@ import { API_URL } from '../config/api';
 const Audit = () => {
     const navigate = useNavigate();
     
+    // Saca al usuario del almacenamiento y verifica si cuenta con permisos de administrador
     const user = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
     const rolUsuario = (user.rol || user.ROL || '').toUpperCase();
     const esAdmin = rolUsuario === 'ADMINISTRADOR';
@@ -22,6 +23,7 @@ const Audit = () => {
     const [gerenteSucursalNombre, setGerenteSucursalNombre] = useState('');
 
     useEffect(() => {
+        // Carga los datos financieros y de flujo de efectivo en paralelo con un tiempo mínimo de espera
         const cargarDatosAuditoria = async () => {
             const tiempoMinimo = new Promise(resolve => setTimeout(resolve, 1000));
 
@@ -32,7 +34,7 @@ const Audit = () => {
                     tiempoMinimo
                 ]);
 
-                // Normalizamos los datos por si vienen en minúsculas desde Supabase
+                // Normaliza los datos financieros por si vienen en mayúsculas o minúsculas
                 const finNormalizados = (finData || []).map(item => ({
                     id_sucursal: item.id_sucursal || item.ID_SUCURSAL,
                     nombre_ubicacion: item.nombre_ubicacion || item.NOMBRE_UBICACION || item.sucursal || 'Principal',
@@ -41,6 +43,7 @@ const Audit = () => {
                     valor_activos_fijos: Number(item.valor_activos_fijos || item.VALOR_ACTIVOS_FIJOS || 0)
                 }));
 
+                // Normaliza los movimientos del flujo de caja
                 const flowNormalizados = (flowData || []).map(mov => ({
                     id_movimiento: mov.id_movimiento || mov.ID_MOVIMIENTO,
                     fecha_hora: mov.fecha_hora || mov.FECHA_HORA || mov.fecha || 'N/D',
@@ -85,6 +88,7 @@ const Audit = () => {
     }, [esAdmin]);
 
     useEffect(() => {
+        // Filtra los datos financieros y de flujo según la sucursal o el rol del usuario
         if (!esAdmin && gerenteSucursalNombre) {
             const filteredFinancials = financialsOriginal.filter(
                 (item) => item.nombre_ubicacion.toLowerCase() === gerenteSucursalNombre.toLowerCase()
@@ -113,14 +117,17 @@ const Audit = () => {
         }
     }, [sucursalSeleccionada, financialsOriginal, cashFlowOriginal, esAdmin, gerenteSucursalNombre]);
 
+    // Extrae una lista única de sucursales para llenar el selector de filtros
     const sucursalesUnicas = [...new Set(financialsOriginal.map(item => item.nombre_ubicacion))];
 
+    // Suma los montos totales de caja, planilla y activos de los registros visibles
     const totalCaja = financials.reduce((sum, item) => sum + item.saldo_caja, 0);
     const totalPlanilla = financials.reduce((sum, item) => sum + item.gasto_planilla, 0);
     const totalActivos = financials.reduce((sum, item) => sum + item.valor_activos_fijos, 0);
 
     const tituloSucursalActiva = esAdmin ? sucursalSeleccionada : gerenteSucursalNombre;
 
+    // Muestra la pantalla de carga mientras se obtienen los datos de la auditoría
     if (loading) {
         return <Cargando mensaje="Cargando..." />;
     }

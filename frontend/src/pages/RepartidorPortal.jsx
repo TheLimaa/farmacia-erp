@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Cargando from '../components/Cargando'; // <--- Importamos la plantilla de carga
+import Cargando from '../components/Cargando';
 import { API_URL } from '../config/api';
 
 const RepartidorPortal = () => {
     const navigate = useNavigate();
     
-    // Usamos localStorage con respaldo en sessionStorage para evitar que pida login a cada rato
+    // Obtiene la sesión del usuario guardada en el almacenamiento local o de sesión
     const sessionUser = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
     const [repartidorInfo, setRepartidorInfo] = useState({
         nombre: sessionUser.nombre || sessionUser.usuario || 'Repartidor',
@@ -19,22 +19,21 @@ const RepartidorPortal = () => {
     const [mostrarEntregados, setMostrarEntregados] = useState(false);
     const [notifPermiso, setNotifPermiso] = useState('default');
 
+    // Carga inicial de datos y configura un intervalo para actualizar los pedidos en tiempo real
     useEffect(() => {
         cargarDatosYPedidos(true);
         if ('Notification' in window) {
             setNotifPermiso(Notification.permission);
         }
 
-        // --- TIEMPO REAL: Actualizar pedidos automáticamente cada 5 segundos ---
         const intervalId = setInterval(() => {
-            cargarDatosYPedidos(false); // Pasamos false para que sea transparente sin mostrar la pantalla de carga principal
+            cargarDatosYPedidos(false); 
         }, 5000);
 
-        // Limpiar el intervalo cuando el usuario cierre sesión o salga de la vista
         return () => clearInterval(intervalId);
     }, []);
 
-    // Función auxiliar para convertir la llave VAPID a Uint8Array
+    // Convierte una clave VAPID de base64 a formato binario Uint8Array
     const urlBase64ToUint8Array = (base64String) => {
         const padding = '='.repeat((4 - base64String.length % 4) % 4);
         const base64 = (base64String + padding)
@@ -50,6 +49,7 @@ const RepartidorPortal = () => {
         return outputArray;
     };
 
+    // Solicita permisos y registra las notificaciones push en el navegador
     const solicitarPermisoYSuscribir = async () => {
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
             alert('Este navegador no soporta notificaciones Push en segundo plano.');
@@ -57,25 +57,19 @@ const RepartidorPortal = () => {
         }
 
         try {
-            // 1. Registrar el Service Worker (/sw.js)
             const registration = await navigator.serviceWorker.register('/sw.js');
-
-            // 2. Solicitar permisos de notificación
             const permission = await Notification.requestPermission();
             setNotifPermiso(permission);
 
             if (permission === 'granted') {
-                // 3. Llave pública VAPID proporcionada
                 const publicVapidKey = 'BFv8hAWs38mYSb5pLSQAKR4X43c1ZJnzhYTDOLxyg9D13YqRp4eTvqmBS_S_x02hmNj_xtzoVFRDCfmuGhNL_4c';
                 const convertedKey = urlBase64ToUint8Array(publicVapidKey);
 
-                // 4. Suscribir al navegador en el PushManager
                 const subscription = await registration.pushManager.subscribe({
                     userVisibleOnly: true,
                     applicationServerKey: convertedKey
                 });
 
-                // 5. Enviar la suscripción al Backend vinculada al repartidor
                 await fetch(`${API_URL}/api/notificaciones/suscribir`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -99,13 +93,13 @@ const RepartidorPortal = () => {
         }
     };
 
+    // Obtiene los datos del repartidor y filtra los pedidos correspondientes a su sucursal
     const cargarDatosYPedidos = async (mostrarLoader = true) => {
         const tiempoMinimo = new Promise(resolve => setTimeout(resolve, 1000));
 
         try {
             if (mostrarLoader) setLoading(true);
 
-            // Ejecutamos las peticiones y el tiempo mínimo en paralelo si se muestra el loader inicial
             const [resUser, resPedidos] = await Promise.all([
                 fetch(`${API_URL}/api/usuarios`).then(res => res.json()).catch(() => ({ success: false })),
                 fetch(`${API_URL}/api/pedidos/todos`).then(res => res.json()).catch(() => ({ success: false })),
@@ -143,6 +137,7 @@ const RepartidorPortal = () => {
         }
     };
 
+    // Actualiza el estado de un pedido específico en el servidor y de forma local
     const cambiarEstadoPedido = async (idPedido, nuevoEstado) => {
         try {
             await fetch(`${API_URL}/api/pedidos/${idPedido}/estado`, {
@@ -167,6 +162,7 @@ const RepartidorPortal = () => {
         }
     };
 
+    // Cancela un pedido seleccionado tras la confirmación y devuelve el stock al inventario
     const cancelarPedido = async (idPedido) => {
         if (!window.confirm(`¿Estás seguro de que deseas cancelar el pedido #${idPedido}? Esta acción devolverá el stock al inventario de la tienda.`)) {
             return;
@@ -192,6 +188,7 @@ const RepartidorPortal = () => {
         }
     };
 
+    // Genera y abre una ventana con el comprobante de venta o factura lista para imprimir
     const verImprimirFactura = async (p) => {
         const idPed = p.ID_PEDIDO || p.id_pedido;
         const totalPed = Number(p.TOTAL || p.total || 0);
@@ -291,7 +288,6 @@ const RepartidorPortal = () => {
 
                         <div class="line"></div>
                         
-                        <!-- DESGLOSE DE SUBTOTAL, ENVÍO Y TOTAL -->
                         <div class="totales-box">
                             <div class="flex">
                                 <span>Subtotal Productos:</span>
@@ -328,12 +324,14 @@ const RepartidorPortal = () => {
         }
     };
 
+    // Limpia la sesión del navegador y redirige al usuario a la pantalla de inicio de sesión
     const handleLogout = () => {
         sessionStorage.clear();
         localStorage.clear();
         navigate('/login');
     };
 
+    // Filtra los pedidos para mostrar los pendientes o el historial según la pestaña seleccionada
     const pedidosFiltrados = pedidos.filter(p => {
         const estado = (p.ESTADO_PEDIDO || p.estado_pedido || '').toUpperCase();
         const esEntregado = estado === 'ENTREGADO';
@@ -341,6 +339,7 @@ const RepartidorPortal = () => {
         return mostrarEntregados ? (esEntregado || esCancelado) : (!esEntregado && !esCancelado);
     });
 
+    // Muestra la pantalla de carga mientras se obtienen los datos iniciales
     if (loading) {
         return <Cargando mensaje="Cargando..." />;
     }

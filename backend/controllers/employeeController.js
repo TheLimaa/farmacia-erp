@@ -1,6 +1,6 @@
-const db = require('../config/db'); // Importa tu conexión a PostgreSQL
+const db = require('../config/db');
 
-// GET: Obtener todos los empleados con su sucursal
+// Consulta la lista completa de empleados en la base de datos junto con el nombre de su sucursal asociada, ordenados de forma descendente por su identificador
 const obtenerEmpleados = async (req, res) => {
     try {
         const sql = `
@@ -18,13 +18,11 @@ const obtenerEmpleados = async (req, res) => {
     }
 };
 
-// POST: Crear empleado (Soporta id_sucursal opcional/null)
+// Registra un nuevo empleado en la base de datos asignando la fecha de contratación actual y asociándolo a una sucursal o dejándola nula si es administrador
 const crearEmpleado = async (req, res) => {
     try {
         const { nombre_completo, puesto, salario_base, id_sucursal } = req.body;
 
-        // Como id_empleado es SERIAL en Postgres, no necesitamos calcular el MAX().
-        // Usamos CURRENT_TIMESTAMP en lugar de SYSDATE y parámetros posicionales ($1, $2, etc.)
         const sql = `
             INSERT INTO empleado (nombre_completo, puesto, salario_base, fecha_contratacion, id_sucursal)
             VALUES ($1, $2, $3, CURRENT_TIMESTAMP, $4)
@@ -34,7 +32,7 @@ const crearEmpleado = async (req, res) => {
             nombre_completo,
             puesto,
             salario_base,
-            id_sucursal || null // Si es Admin, envía NULL
+            id_sucursal || null
         ]);
 
         res.status(201).json({ success: true, message: 'Empleado registrado exitosamente.' });
@@ -44,14 +42,12 @@ const crearEmpleado = async (req, res) => {
     }
 };
 
-// PUT: Editar datos / Reasignar sucursal
+// Actualiza los datos generales o la sucursal asignada de un empleado específico utilizando su identificador
 const actualizarEmpleado = async (req, res) => {
     try {
         const { id } = req.params;
         const { nombre_completo, puesto, salario_base, id_sucursal } = req.body;
 
-        // En PostgreSQL para mantener el valor actual si viene vacío/null, 
-        // podemos evaluar con COALESCE en la consulta SQL pasando los nuevos valores o los respaldos.
         const sql = `
             UPDATE empleado 
             SET nombre_completo = COALESCE($1, nombre_completo),
@@ -76,12 +72,11 @@ const actualizarEmpleado = async (req, res) => {
     }
 };
 
-// DELETE: Eliminar empleado
+// Elimina del sistema los registros de pagos de planilla asociados y posteriormente el perfil del empleado según su identificador
 const eliminarEmpleado = async (req, res) => {
     try {
         const { id } = req.params;
 
-        // Eliminamos primero los pagos de planilla asociados y luego el empleado usando parámetros posicionales
         await db.query(`DELETE FROM pago_planilla WHERE id_empleado = $1`, [id]);
         await db.query(`DELETE FROM empleado WHERE id_empleado = $1`, [id]);
 

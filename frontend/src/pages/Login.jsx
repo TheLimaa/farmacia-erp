@@ -13,6 +13,7 @@ const Login = () => {
     const { login } = useAuth();
     const navigate = useNavigate();
 
+    // Valida las credenciales del usuario enviándolas al servidor y redirige según su rol
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
@@ -52,6 +53,7 @@ const Login = () => {
         }
     };
 
+    // Muestra la pantalla de carga mientras se procesa el inicio de sesión
     if (cargando) {
         return <Cargando mensaje="Iniciando sesión..." />;
     }
@@ -60,7 +62,6 @@ const Login = () => {
         <div className="login-container">
             <div className="login-card">
                 
-                {/* Cabecera elegante y equilibrada */}
                 <div className="login-header-bar">
                     <img 
                         src={logoVita} 
