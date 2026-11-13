@@ -16,7 +16,10 @@ const Login = () => {
     const [idUsuarioTemp, setIdUsuarioTemp] = useState(null);
     const [nuevaPassword, setNuevaPassword] = useState('');
     const [confirmarPassword, setConfirmarPassword] = useState('');
-    const [verPassword, setVerPassword] = useState(false);
+    
+    // Estados independientes para alternar la visibilidad de las contraseñas en cada formulario
+    const [verPasswordLogin, setVerPasswordLogin] = useState(false);
+    const [verPasswordNuevo, setVerPasswordNuevo] = useState(false);
 
     const { login } = useAuth();
     const navigate = useNavigate();
@@ -148,7 +151,7 @@ const Login = () => {
                             <label className="login-label">Nueva Contraseña</label>
                             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                                 <input 
-                                    type={verPassword ? "text" : "password"} 
+                                    type={verPasswordNuevo ? "text" : "password"} 
                                     placeholder="Nueva contraseña" 
                                     value={nuevaPassword} 
                                     onChange={(e) => setNuevaPassword(e.target.value)} 
@@ -158,10 +161,11 @@ const Login = () => {
                                 />
                                 <button 
                                     type="button" 
-                                    onClick={() => setVerPassword(!verPassword)} 
+                                    onClick={() => setVerPasswordNuevo(!verPasswordNuevo)} 
                                     style={{ position: 'absolute', right: '10px', background: 'none', border: 'none', cursor: 'pointer' }}
+                                    title={verPasswordNuevo ? "Ocultar contraseña" : "Ver contraseña"}
                                 >
-                                    {verPassword ? "👁️‍🗨️" : "👁️"}
+                                    {verPasswordNuevo ? "👁️‍🗨️" : "👁️"}
                                 </button>
                             </div>
                         </div>
@@ -183,7 +187,7 @@ const Login = () => {
                         </button>
                     </form>
                 ) : (
-                    /* Formulario de Login normal */
+                    /* Formulario de Login normal con botón de ver contraseña */
                     <form onSubmit={handleSubmit} className="login-form">
                         <div className="login-field-group">
                             <label className="login-label">Usuario</label>
@@ -199,14 +203,25 @@ const Login = () => {
                         </div>
                         <div className="login-field-group">
                             <label className="login-label">Contraseña</label>
-                            <input 
-                                type="password" 
-                                placeholder="••••••••" 
-                                value={password} 
-                                onChange={(e) => setPassword(e.target.value)} 
-                                required 
-                                className="login-input"
-                            />
+                            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                <input 
+                                    type={verPasswordLogin ? "text" : "password"} 
+                                    placeholder="••••••••" 
+                                    value={password} 
+                                    onChange={(e) => setPassword(e.target.value)} 
+                                    required 
+                                    className="login-input"
+                                    style={{ width: '100%', paddingRight: '40px' }}
+                                />
+                                <button 
+                                    type="button" 
+                                    onClick={() => setVerPasswordLogin(!verPasswordLogin)} 
+                                    style={{ position: 'absolute', right: '10px', background: 'none', border: 'none', cursor: 'pointer' }}
+                                    title={verPasswordLogin ? "Ocultar contraseña" : "Ver contraseña"}
+                                >
+                                    {verPasswordLogin ? "👁️‍🗨️" : "👁️"}
+                                </button>
+                            </div>
                         </div>
 
                         <button type="submit" className="login-submit-btn">
