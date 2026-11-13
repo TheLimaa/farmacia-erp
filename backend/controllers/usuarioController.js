@@ -82,9 +82,10 @@ const crearUsuario = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash(password, salt);
 
+        // Se incluye requiere_cambio_password = true por defecto para nuevos usuarios
         const sql = `
-            INSERT INTO usuario_sistema (id_empleado, nombre_usuario, password_hash, rol)
-            VALUES ($1, $2, $3, $4)
+            INSERT INTO usuario_sistema (id_empleado, nombre_usuario, password_hash, rol, requiere_cambio_password)
+            VALUES ($1, $2, $3, $4, TRUE)
         `;
         
         await db.query(sql, [
@@ -101,7 +102,7 @@ const crearUsuario = async (req, res) => {
     }
 };
 
-// Actualiza/cambia la contraseña de un usuario encriptándola previamente con bcrypt
+// Actualiza/cambia la contraseña de un usuario, la encripta con bcrypt y DESACTIVA el cambio obligatorio de contraseña
 const actualizarPassword = async (req, res) => {
     try {
         const { id } = req.params;
@@ -114,9 +115,10 @@ const actualizarPassword = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash(password, salt);
 
+        // Actualiza el hash y cambia la bandera a FALSE para que no vuelva a pedir cambio obligatorio
         const sql = `
             UPDATE usuario_sistema 
-            SET password_hash = $1 
+            SET password_hash = $1, requiere_cambio_password = FALSE 
             WHERE id_usuario = $2
         `;
         
